@@ -149,7 +149,6 @@ cp: xxxxx: Operation not permitted
 | --------------------------- | ---------- |
 | 完整磁盘访问权限 / Full Disk Access | 允许脚本修改应用目录 |
 | 文件与文件夹 / Files and Folders  | 允许访问相关文件   |
-| App Management              | 允许管理应用内容   |
 
 常见终端工具包括：
 
