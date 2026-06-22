@@ -18,17 +18,20 @@
 #import <stdint.h>
 #import <stdarg.h>
 #import <objc/runtime.h>
+#import <objc/message.h>
 #import "MenuManager.h"
 #import "NSObject+MainHook.h"
 
 #include <string>
+#include <time.h>
 #include <atomic>
 
 #pragma mark - 全局状态
 
 static BOOL YMHasPatchedAntiRevoke = NO;
 static BOOL YMIsTargetWeChatResourceDylibPath(NSString *imagePath);
-// wechat.dylib 的 slide，dyld 加载后填。
+// 当前 /Applications/WeChat.app/Contents/Resources/wechat.dylib 的 ASLR slide。
+// dyld 加载 wechat.dylib 后会赋值。
 static uintptr_t YMWeChatDylibSlide = 0;
 
 // 多开 Patch 状态
@@ -40,7 +43,7 @@ static BOOL YMHasPatchedGroupExitMonitor = NO;
 
 //static const uintptr_t YMMultiOpenTryPreventMultiInstanceVA = 0x1C0A64;
 
-// 前置声明，下面几个 patch 都要用。
+// 先声明，后面 constructor、multi open、anti revoke、群员退群监控都会用。
 static void YMDyldImageAdded(const struct mach_header *mh, intptr_t vmaddr_slide);
 static void YMRegisterDyldCallbackIfNeeded(void);
 static void YMInstallMultiOpenPatch(void);
@@ -48,7 +51,7 @@ static void YMInstallGroupExitMonitorPatch(void);
 
 typedef enum {
     YMRevokeHookModePointer = 0,   // 4.1.9：写 off_91EAD20
-    YMRevokeHookModeInline  = 1,   // 4.1.10：直接 patch 函数入口
+    YMRevokeHookModeInline  = 1,   // 4.1.10：patch 局部指令点
 } YMRevokeHookMode;
 
 #pragma mark - MessageWrap 字段布局
@@ -108,6 +111,11 @@ typedef struct {
     uintptr_t groupExitFMessagePreVA;
     uintptr_t groupExitUpdateSessionCacheVA;
 
+    uintptr_t revokeOriginCallsiteAfterQueryVA;
+    uintptr_t revokeOriginCallsiteContinueVA;
+    uintptr_t revokeOriginCallsiteZeroBranchVA;
+    uintptr_t revokeDeleteMessagesVA;
+
     YMMessageWrapLayout layout;
     
     YMRevokeHookMode hookMode;//4.1.10添加
@@ -148,6 +156,11 @@ static const YMWeChatAdaptProfile YMAdaptProfiles[] = {
         .groupExitDBApplyVA = 0,
         .groupExitFMessagePreVA = 0,
         .groupExitUpdateSessionCacheVA = 0,
+
+        .revokeOriginCallsiteAfterQueryVA = 0,
+        .revokeOriginCallsiteContinueVA = 0,
+        .revokeOriginCallsiteZeroBranchVA = 0,
+        .revokeDeleteMessagesVA = 0,
 
         .layout = {
             .messageWrapSize = 616,
@@ -200,6 +213,22 @@ static const YMWeChatAdaptProfile YMAdaptProfiles[] = {
         //yq
         .groupExitUpdateSessionCacheVA = 0x37EACC0,
 
+        //callsite拿
+        /*
+         sub_2819F44(__dst, v139[0], v137 + 392, *((_QWORD *)v137 + 45));//不要去直接去碰sub_2819F44这个函数,要去碰他的地址:
+         __text:0000000002B7123C                 ADD             X1, X9, #0x188
+       __text:0000000002B71240                 BL              sub_2819F44
+       __text:0000000002B71244                 LDR             X22, [SP,#0x920+var_650+8]//碰这个指令
+       __text:0000000002B71248                 CBZ             X22, loc_2B71274
+       __text:0000000002B7124C                 ADD             X8, X22, #8
+       __text:0000000002B71250                 MOV             X9, #0xFFFFFFFFFFFFFFFF
+         */
+        .revokeOriginCallsiteAfterQueryVA = 0x2B71244,//->Lhook->CoReplaceOriginMessageByRevoke里
+        .revokeOriginCallsiteContinueVA = 0x2B71254,//->Lhook->CoReplaceOriginMessageByRevoke里
+        .revokeOriginCallsiteZeroBranchVA = 0x2B71274,//->Lhook->CoReplaceOriginMessageByRevoke里
+        
+        .revokeDeleteMessagesVA = 0x2814B9C,//->Lhook->DeleteMessages
+
         .layout = {
             .messageWrapSize = 616,
 
@@ -235,6 +264,11 @@ static const YMWeChatAdaptProfile YMAdaptProfiles[] = {
          .groupExitFMessagePreVA = 新版 InsertFMessageToSessionPre 函数入口地址，没有就填 0,
          .groupExitUpdateSessionCacheVA = 新版 UpdateSessionCache 函数入口地址，没有就填 0,
 
+         .revokeOriginCallsiteAfterQueryVA = 新版 BL sub_2819F44 后一条指令地址，没有就填 0,
+         .revokeOriginCallsiteContinueVA = 新版继续执行地址，没有就填 0,
+         .revokeOriginCallsiteZeroBranchVA = 新版 CBZ 分支地址，没有就填 0,
+         .revokeDeleteMessagesVA = 新版 DeleteMessages 函数入口地址，没有就填 0,
+
          .layout = {
              .messageWrapSize = 616,
 
@@ -252,7 +286,8 @@ static const YMWeChatAdaptProfile YMAdaptProfiles[] = {
 
 static const size_t YMAdaptProfilesCount = sizeof(YMAdaptProfiles) / sizeof(YMAdaptProfiles[0]);
 
-// 当前命中的版本配置，后面地址都从这里拿。
+// 当前运行版本匹配到的配置。
+// 后面所有地址都从这里取，不再写死单个 YMCurrentProfile。
 static const YMWeChatAdaptProfile *YMActiveProfile = NULL;
 
 #pragma mark - 微信内部函数类型
@@ -264,6 +299,15 @@ typedef int64_t (*YMInsertPaySysMsgToSessionFunc)(int64_t a1,
                                                   const std::string *session,
                                                   const std::string *content);
 
+/*
+ paymsg / red_envelope 反编译里表现为：
+   ym_AddLocalMessageWrap(v39[0], v32);
+
+ 所以这里按两个参数声明：
+   messageService = v39[0]
+   message        = MessageWrap*
+ */
+typedef int64_t (*YMAddLocalMessageWrapFunc)(int64_t messageService, void *message);
 
 #pragma mark - 退群相关
 typedef int64_t (*YMGroupExitDBApplyFunc)(int64_t task);
@@ -395,6 +439,20 @@ static BOOL YMSafeReadPointer(uintptr_t address, uintptr_t *value) {
     return YES;
 }
 
+static BOOL YMSafeReadUInt32(uintptr_t address, uint32_t *value) {
+    if (!value) {
+        return NO;
+    }
+
+    uint32_t tmp = 0;
+    if (!YMSafeReadMemory(address, &tmp, sizeof(tmp))) {
+        return NO;
+    }
+
+    *value = tmp;
+    return YES;
+}
+
 /*
  读取微信内部 libc++ std::string 对象。
  反编译里常见判断：
@@ -408,7 +466,10 @@ static NSString *YMNSStringFromLibcppStringObject(const void *stringObject) {
         return @"";
     }
 
-    // 微信里的野指针别直接怼，读错了 try/catch 也救不了。
+    /*
+     注意：这里不能直接解引用微信内部指针。
+     如果偏移猜错，普通 try/catch 捕获不了 EXC_BAD_ACCESS，所以统一用 vm_read_overwrite 做安全读。
+     */
     uint8_t header[24] = {0};
     uintptr_t objectAddress = (uintptr_t)stringObject;
     if (!YMSafeReadMemory(objectAddress, header, sizeof(header))) {
@@ -457,12 +518,27 @@ static BOOL YMProfileHasValidAddresses(const YMWeChatAdaptProfile *profile) {
         return NO;
     }
 
-    return profile->hookPointerVA != 0 &&
-           profile->rawMessageTemplateVA != 0 &&
-           profile->messageWrapFromRawVA != 0 &&
-           profile->messageWrapDestructVA != 0 &&
-           profile->insertPaySysMsgToSessionVA != 0 &&
-           profile->layout.messageWrapSize > 0;
+    BOOL baseOK = profile->rawMessageTemplateVA != 0 &&
+                  profile->messageWrapFromRawVA != 0 &&
+                  profile->messageWrapDestructVA != 0 &&
+                  profile->insertPaySysMsgToSessionVA != 0 &&
+                  profile->layout.messageWrapSize > 0;
+
+    if (!baseOK) {
+        return NO;
+    }
+
+    if (profile->hookMode == YMRevokeHookModePointer) {
+        return profile->hookPointerVA != 0;
+    }
+
+    if (profile->hookMode == YMRevokeHookModeInline) {
+        return profile->revokeOriginCallsiteAfterQueryVA != 0 &&
+               profile->revokeOriginCallsiteContinueVA != 0 &&
+               profile->revokeOriginCallsiteZeroBranchVA != 0;
+    }
+
+    return NO;
 }
 
 static const YMWeChatAdaptProfile *YMFindAdaptProfileForCurrentWeChat(void) {
@@ -554,8 +630,90 @@ static BOOL YMIsTargetWeChatVersion(void) {
     return YES;
 }
 
-#pragma mark - MessageWrap 字段读取
+#pragma mark - C++ std::string 辅助
 
+/*
+ 第一版先默认使用纯文本系统消息。
+ 老版 WeChatExtension 也是类似逻辑：msgType=10000 + content 文案。
+ 如果纯文本不显示，再把这里改成 XML 版本测试。
+ */
+__attribute__((unused))
+static std::string YMBuildAntiRevokeSystemContent(void) {
+    return YMStdStringFromNSString(@"已拦截到一条撤回消息");
+}
+
+/*
+ 备用 XML 版本。
+ 如果纯文本版本插入了但 UI 不显示，可以把 YMBuildAntiRevokeSystemContent()
+ 里 return 改成这个函数。
+ */
+__attribute__((unused))
+static std::string YMBuildAntiRevokeSystemXMLContent(void) {
+    std::string text = YMStdStringFromNSString(@"已拦截到一条撤回消息");
+
+    std::string xml;
+    xml += "<?xml version=\"1.0\"?>\n";
+    xml += "<sysmsg type=\"paymsg\">";
+    xml += "<content><![CDATA[";
+    xml += text;
+    xml += "]]></content>";
+    xml += "</sysmsg>";
+
+    return xml;
+}
+
+#pragma mark - shared_ptr 释放辅助
+
+/*
+ 微信内部大量使用 libc++ shared_ptr。
+ 反编译中一般是：
+   if (control && !atomic_fetch_add(control + 8, -1)) {
+       control->__on_zero_shared(control);
+       std::__shared_weak_count::__release_weak(control);
+   }
+
+ 这里第一版只用于自己栈上临时 shared_ptr 的释放。
+ 如果测试阶段担心这里有风险，可以临时把调用 YMReleaseSharedPtrStorage 的地方注释掉。
+ */
+__attribute__((unused))
+static void YMReleaseSharedPtrStorage(void *storage) {
+    if (!storage) {
+        return;
+    }
+
+    void **items = (void **)storage;
+    void *controlBlock = items[1];
+
+    items[0] = NULL;
+    items[1] = NULL;
+
+    if (!controlBlock) {
+        return;
+    }
+
+    // libc++ shared_count 的 shared_owners_ 通常在 controlBlock + 8。
+    volatile long *sharedOwners = (volatile long *)((uint8_t *)controlBlock + 8);
+    long oldValue = __atomic_fetch_add(sharedOwners, -1, __ATOMIC_ACQ_REL);
+
+    // 反编译里的判断是 oldValue == 0 时释放。
+    if (oldValue == 0) {
+        void **vtable = *(void ***)controlBlock;
+
+        // vtable[2] 通常对应 __on_zero_shared()
+        if (vtable && vtable[2]) {
+            typedef void (*OnZeroSharedFunc)(void *);
+            ((OnZeroSharedFunc)vtable[2])(controlBlock);
+        }
+
+        // vtable[3] 通常对应 __on_zero_shared_weak()
+        if (vtable && vtable[3]) {
+            typedef void (*OnZeroSharedWeakFunc)(void *);
+            ((OnZeroSharedWeakFunc)vtable[3])(controlBlock);
+        }
+    }
+}
+
+#pragma mark - MessageWrap 字段读取
 
 static std::string *YMRawWrapStringField(void *rawWrap, size_t offset) {
     if (!rawWrap) {
@@ -696,8 +854,9 @@ static NSString *YMFindRevokeXMLFromRawWrap(void *rawWrap, size_t wrapSize) {
     }
 
     /*
-     4.1.10 这里就是 +304，不能读328
-     后面再扫一遍，防止小版本偏移抽风。
+     4.1.10 实测：撤回 sysmsg 的 XML 在 MessageWrap + 304，
+     +352 是 msgsource，之前按 +328 读取会拿到空字符串。
+     这里仍然做全量 fallback 扫描，避免小版本偏移轻微漂移。
      */
     const size_t preferredOffsets[] = {304, 328, 352, 376, 400, 424, 448, 280, 248, 224, 200};
     for (size_t i = 0; i < sizeof(preferredOffsets) / sizeof(preferredOffsets[0]); i++) {
@@ -752,6 +911,11 @@ static NSString *YMBuildAntiRevokeNoticeText(NSString *remoteUserOrSession,
         [text appendFormat:@"撤回方/会话：%@\n", remoteUserOrSession ?: @""];
     }
 
+    /*
+     这里不显示“原消息类型/内容”。
+     原消息本身已经因为当前 hook 被保留下来；如果要额外展示类型和内容，
+     后续需要换到 CoReplaceOriginMessageByRevoke 并安全自查 MessageWrap，不能再 hook 全局 copy 函数。
+     */
     if (messageTimeText.length > 0) {
         [text appendString:messageTimeText];
     }
@@ -1036,10 +1200,12 @@ static BOOL YMPatchARM64AbsoluteJump(uintptr_t address,
  参数 rawRevokeMessage：
    这是 ym_HandleSysMsg_RevokeMsg 原函数的第二个参数 X1。
    原函数会用 sub_4728670(rawWrap, rawRevokeMessage) 构造一个 MessageWrap。
+
  复用这一步，主要是为了拿到会话相关字段：
    rawWrap + 24
    rawWrap + 48
- 构造 type=10000 MessageWrap 插入本地聊天流。
+
+ 然后构造自己的 type=10000 MessageWrap 插入本地聊天流。
  */
 static BOOL YMInsertLocalAntiRevokeNotice(int64_t rawRevokeMessage) {
     const YMWeChatAdaptProfile *profile = YMGetActiveProfile();
@@ -2157,6 +2323,637 @@ static void YMInstallGroupExitMonitorPatch(void) {
 }
 
 
+
+
+#pragma mark - 撤回原消息局部 Callsite Hook（4.1.10）
+
+/*
+fileOffset=0x2b70954 level=2 file=message_revoke_manager.cc func=CoReplaceOriginMessageByRevoke line=1069 ctx=0x1753bfd88 做撤回,
+fileOffset=0x281a0f4 level=2 file=message_manager.cc func=GetMessageBySvrIdOnRecent line=2435 ctx=0x1753bfb58  这里面的函数去调用拿到原始MessageWrap
+  sub_4247180(&v148);
+   sub_1382484(v147, v148);
+   sub_211A334(v139, *(_QWORD *)v147);
+   sub_2819F44(__dst, v139[0], v137 + 392, *((_QWORD *)v137 + 45));//不要去直接去碰sub_2819F44这个函数,要去碰他的地址:
+   __text:0000000002B7123C                 ADD             X1, X9, #0x188
+ __text:0000000002B71240                 BL              sub_2819F44
+ __text:0000000002B71244                 LDR             X22, [SP,#0x920+var_650+8]//碰这个指令
+ __text:0000000002B71248                 CBZ             X22, loc_2B71274
+ __text:0000000002B7124C                 ADD             X8, X22, #8
+ __text:0000000002B71250                 MOV             X9, #0xFFFFFFFFFFFFFFFF
+
+ [YMAntiRevoke] [WXLOG] fileOffset=0x2814cb4 level=2 file=message_manager.cc func=DeleteMessages line=2155
+ */
+
+// 地址放到 YMWeChatAdaptProfile 里了，后面适配新版别满文件乱搜。
+
+extern "C" uintptr_t YMRevokeOriginCallsiteContinueAddress;
+extern "C" uintptr_t YMRevokeOriginCallsiteZeroBranchAddress;
+extern "C" void YMRevokeOriginCallsiteHelper(uintptr_t originalSP, uintptr_t savedRegs);
+extern "C" void YMRevokeOriginCallsiteStub(void);
+
+uintptr_t YMRevokeOriginCallsiteContinueAddress = 0;
+uintptr_t YMRevokeOriginCallsiteZeroBranchAddress = 0;
+
+static uintptr_t YMRevokeDeleteMessagesRuntimeAddress = 0;
+static uint8_t YMRevokeDeleteMessagesOriginalBytes[16] = {0};
+static uint8_t YMRevokeDeleteMessagesHookBytes[16] = {0};
+static BOOL YMRevokeDeleteMessagesHasSavedOriginalBytes = NO;
+static std::atomic_bool YMRevokeDeleteMessagesCallingOriginal(false);
+
+static __thread BOOL YMRevokeDeleteGuardActive = NO;
+static __thread uint64_t YMRevokeLastNoticeSvrIdInCallsite = 0;
+static __thread uint64_t YMRevokeTargetSvrIdForDeleteGuard = 0;
+
+static NSString *YMRevokeMessageTypeName(uint32_t type) {
+    switch (type) {
+        case 1: return @"[文本消息]";
+        case 3: return @"[图片消息]";
+        case 34: return @"[语音消息]";
+        case 43: return @"[视频消息]";
+        case 47: return @"[表情包]";
+        case 48: return @"[位置消息]";
+        case 49: return @"[卡片/文件/链接消息]";
+        case 10000: return @"[10000（系统消息]";
+        case 10002: return @"[10002（系统通知]";
+        default: return [NSString stringWithFormat:@"%u", type];
+    }
+}
+
+static BOOL YMRevokeMessageTypeShouldShowContent(uint32_t type) {
+    return type == 1;
+}
+
+static BOOL YMRevokeOriginTextLooksUseless(NSString *text) {
+    if (text.length == 0) {
+        return NO;
+    }
+
+    return [text containsString:@"暂不支持该内容"] ||
+           [text containsString:@"请在手机上查看"];
+}
+
+static NSString *YMRevokeShortLogText(NSString *text) {
+    if (text.length == 0) {
+        return @"";
+    }
+
+    if (text.length > 300) {
+        return [[text substringToIndex:300] stringByAppendingString:@"…"];
+    }
+
+    return text;
+}
+
+static NSString *YMCleanOriginMessageContent(NSString *rawContent, NSString **senderOut) {
+    if (senderOut) {
+        *senderOut = @"";
+    }
+
+    if (rawContent.length == 0) {
+        return @"";
+    }
+
+    NSString *text = [rawContent stringByTrimmingCharactersInSet:[NSCharacterSet whitespaceAndNewlineCharacterSet]] ?: @"";
+
+    // 群聊文本常见格式：wxid_xxx:\n内容。展示时把前缀拆出来。
+    NSRange colonNewline = [text rangeOfString:@":\n"];
+    if (colonNewline.location != NSNotFound && colonNewline.location > 0) {
+        NSString *prefix = [text substringToIndex:colonNewline.location] ?: @"";
+        NSString *body = [text substringFromIndex:NSMaxRange(colonNewline)] ?: @"";
+        prefix = [prefix stringByTrimmingCharactersInSet:[NSCharacterSet whitespaceAndNewlineCharacterSet]];
+        body = [body stringByTrimmingCharactersInSet:[NSCharacterSet whitespaceAndNewlineCharacterSet]];
+        if (prefix.length > 0 && senderOut) {
+            *senderOut = prefix;
+        }
+        if (body.length > 0) {
+            return body;
+        }
+    }
+
+    return text;
+}
+
+
+static BOOL YMRevokeXMLMatchesSvrId(NSString *revokeXML, uint64_t expectedSvrId) {
+    if (revokeXML.length == 0) {
+        return NO;
+    }
+
+    if (expectedSvrId == 0) {
+        return YES;
+    }
+
+    NSString *newMsgID = YMExtractXMLTagValue(revokeXML, @"newmsgid");
+    if (newMsgID.length == 0) {
+        newMsgID = YMExtractXMLTagValue(revokeXML, @"newsvrid");
+    }
+    if (newMsgID.length == 0) {
+        return YES;
+    }
+
+    uint64_t xmlSvrId = strtoull(newMsgID.UTF8String ?: "", NULL, 10);
+    return xmlSvrId == expectedSvrId;
+}
+
+static BOOL YMExtractRevokeContextFromWrap(uintptr_t wrap,
+                                           uint64_t expectedSvrId,
+                                           NSString **xmlOut,
+                                           NSString **revokerWxidOut,
+                                           NSString **displayNameOut,
+                                           NSString **replaceMsgOut,
+                                           NSString **msgIDOut,
+                                           NSString **newMsgIDOut) {
+    if (wrap == 0) {
+        return NO;
+    }
+
+    NSString *xml = YMFindRevokeXMLFromRawWrap((void *)wrap, 616);
+    if (xml.length == 0 || !YMRevokeXMLMatchesSvrId(xml, expectedSvrId)) {
+        return NO;
+    }
+
+    NSString *replaceMsg = YMExtractXMLTagValue(xml, @"replacemsg");
+    NSString *displayName = YMDisplayNameFromRevokeReplaceMsg(replaceMsg);
+    NSString *msgID = YMExtractXMLTagValue(xml, @"msgid");
+    NSString *newMsgID = YMExtractXMLTagValue(xml, @"newmsgid");
+    if (newMsgID.length == 0) {
+        newMsgID = YMExtractXMLTagValue(xml, @"newsvrid");
+    }
+
+    NSString *revokerWxid = YMNSStringFromLibcppStringObject((const void *)(wrap + 72));
+    if (revokerWxid.length == 0) {
+        revokerWxid = YMRevokerWxidFromRevokeXMLPrefix(xml);
+    }
+
+    if (xmlOut) *xmlOut = xml ?: @"";
+    if (revokerWxidOut) *revokerWxidOut = revokerWxid ?: @"";
+    if (displayNameOut) *displayNameOut = displayName ?: @"";
+    if (replaceMsgOut) *replaceMsgOut = replaceMsg ?: @"";
+    if (msgIDOut) *msgIDOut = msgID ?: @"";
+    if (newMsgIDOut) *newMsgIDOut = newMsgID ?: @"";
+    return YES;
+}
+
+static BOOL YMFindRevokeContextAroundCallsite(uintptr_t originalSP,
+                                              uintptr_t savedRegs,
+                                              uint64_t expectedSvrId,
+                                              uintptr_t *wrapOut,
+                                              NSString **xmlOut,
+                                              NSString **revokerWxidOut,
+                                              NSString **displayNameOut,
+                                              NSString **replaceMsgOut,
+                                              NSString **msgIDOut,
+                                              NSString **newMsgIDOut) {
+    // 先扫被 stub 保存下来的寄存器。a2/revoke rawWrap 很可能还在某个 callee-saved 寄存器里。
+    if (savedRegs != 0) {
+        for (int reg = 0; reg <= 29; reg++) {
+            uintptr_t candidate = 0;
+            if (!YMSafeReadPointer(savedRegs + (uintptr_t)reg * sizeof(uintptr_t), &candidate)) {
+                continue;
+            }
+            if (candidate == 0 || (candidate & 0x7) != 0) {
+                continue;
+            }
+
+            if (YMExtractRevokeContextFromWrap(candidate,
+                                               expectedSvrId,
+                                               xmlOut,
+                                               revokerWxidOut,
+                                               displayNameOut,
+                                               replaceMsgOut,
+                                               msgIDOut,
+                                               newMsgIDOut)) {
+                if (wrapOut) *wrapOut = candidate;
+                YMLog(@"[RevokeCallsite] revoke context found from saved x%d rawWrap=0x%lx", reg, (unsigned long)candidate);
+                return YES;
+            }
+        }
+    }
+
+    // 再扫当前 sub_2B707E0 栈帧里的指针槽。
+    if (originalSP != 0) {
+        for (uintptr_t offset = 0; offset < 0x920; offset += sizeof(uintptr_t)) {
+            uintptr_t candidate = 0;
+            if (!YMSafeReadPointer(originalSP + offset, &candidate)) {
+                continue;
+            }
+            if (candidate == 0 || (candidate & 0x7) != 0) {
+                continue;
+            }
+
+            if (YMExtractRevokeContextFromWrap(candidate,
+                                               expectedSvrId,
+                                               xmlOut,
+                                               revokerWxidOut,
+                                               displayNameOut,
+                                               replaceMsgOut,
+                                               msgIDOut,
+                                               newMsgIDOut)) {
+                if (wrapOut) *wrapOut = candidate;
+                YMLog(@"[RevokeCallsite] revoke context found from stack pointer slot +0x%lx rawWrap=0x%lx", (unsigned long)offset, (unsigned long)candidate);
+                return YES;
+            }
+        }
+
+        // 最后扫栈上是否有直接内嵌的 MessageWrap 副本。
+        for (uintptr_t offset = 0; offset + 616 <= 0x920; offset += 8) {
+            uintptr_t candidate = originalSP + offset;
+            if (YMExtractRevokeContextFromWrap(candidate,
+                                               expectedSvrId,
+                                               xmlOut,
+                                               revokerWxidOut,
+                                               displayNameOut,
+                                               replaceMsgOut,
+                                               msgIDOut,
+                                               newMsgIDOut)) {
+                if (wrapOut) *wrapOut = candidate;
+                YMLog(@"[RevokeCallsite] revoke context found from stack inline wrap +0x%lx rawWrap=0x%lx", (unsigned long)offset, (unsigned long)candidate);
+                return YES;
+            }
+        }
+    }
+
+    return NO;
+}
+
+static BOOL YMInsertDetailedAntiRevokeNoticeFromOrigin(std::string *sessionString,
+                                                       NSString *sessionText,
+                                                       uint64_t svrId,
+                                                       uint32_t originType,
+                                                       NSString *originRawContent,
+                                                       uint64_t originCreateTimeMs,
+                                                       uint32_t originCreateTimeSec,
+                                                       NSString *revokerWxid,
+                                                       NSString *revokerDisplayName,
+                                                       NSString *replaceMsg,
+                                                       NSString *msgID,
+                                                       NSString *newMsgID) {
+    const YMWeChatAdaptProfile *profile = YMGetActiveProfile();
+    if (!profile || YMWeChatDylibSlide == 0 || !sessionString || sessionString->empty()) {
+        YMLog(@"[RevokeCallsite] insert detailed notice failed: invalid profile/slide/session");
+        return NO;
+    }
+
+    YMInsertPaySysMsgToSessionFunc InsertPaySysMsgToSession =
+    (YMInsertPaySysMsgToSessionFunc)YMRuntimePointer(profile->insertPaySysMsgToSessionVA);
+
+    if (!InsertPaySysMsgToSession) {
+        YMLog(@"[RevokeCallsite] insert detailed notice failed: InsertPaySysMsgToSession is null");
+        return NO;
+    }
+
+    NSString *sender = @"";
+    NSString *cleanContent = @"";
+    BOOL shouldShowContent = YMRevokeMessageTypeShouldShowContent(originType);
+
+    if (shouldShowContent) {
+        cleanContent = YMCleanOriginMessageContent(originRawContent, &sender);
+        if (YMRevokeOriginTextLooksUseless(cleanContent)) {
+            shouldShowContent = NO;
+            cleanContent = @"";
+            sender = @"";
+        }
+    }
+
+    NSString *timeText = YMFormatTimestamp(originCreateTimeSec, originCreateTimeMs);
+
+    NSMutableString *notice = [NSMutableString string];
+    [notice appendString:@"⚠️苏维埃已拦截撤回消息⚠️\n"];
+    [notice appendFormat:@"%@\n", YMRevokeMessageTypeName(originType)];
+
+    if (shouldShowContent) {
+        if (cleanContent.length > 0) {
+            if (cleanContent.length > 1200) {
+                cleanContent = [[cleanContent substringToIndex:1200] stringByAppendingString:@"…"];
+            }
+            [notice appendFormat:@"内容：%@\n", cleanContent];
+        } else {
+            [notice appendString:@"内容：（空）\n"];
+        }
+    }
+
+    if (revokerDisplayName.length > 0 && revokerWxid.length > 0) {
+        [notice appendFormat:@"%@（%@）\n", revokerDisplayName, revokerWxid];
+    } else if (revokerDisplayName.length > 0) {
+        [notice appendFormat:@"%@\n", revokerDisplayName];
+    } else if (revokerWxid.length > 0) {
+        [notice appendFormat:@"%@\n", revokerWxid];
+    }
+    
+    if (timeText.length > 0) {
+        [notice appendString:timeText];
+    }
+
+    std::string content = YMStdStringFromNSString(notice);
+
+    YMLog(@"[RevokeCallsite] insert detailed notice session=%s content=%s",
+          sessionString->c_str(),
+          content.c_str());
+
+    int64_t result = 0;
+    try {
+        result = InsertPaySysMsgToSession(0, sessionString, &content);
+    } catch (...) {
+        YMLog(@"[RevokeCallsite] exception while inserting detailed notice");
+        return NO;
+    }
+
+    YMLog(@"[RevokeCallsite] insert detailed notice result=0x%llx", (unsigned long long)result);
+    return YES;
+}
+
+extern "C" void YMRevokeOriginCallsiteHelper(uintptr_t originalSP, uintptr_t savedRegs) {
+    @autoreleasepool {
+        const size_t dstOffset = 0x18;
+        const size_t extObjectSlotOffset = 0x2C0;
+
+        uintptr_t outWrap = originalSP + dstOffset;
+        uintptr_t extObject = 0;
+        YMSafeReadPointer(originalSP + extObjectSlotOffset, &extObject);
+
+        uint8_t hasValue = 0;
+        YMSafeReadMemory(outWrap + 616, &hasValue, sizeof(hasValue));
+
+        YMLog(@"[RevokeCallsite] after GetMessageBySvrId originalSP=0x%lx outWrap=0x%lx has=%u ext=0x%lx",
+              (unsigned long)originalSP,
+              (unsigned long)outWrap,
+              (unsigned int)hasValue,
+              (unsigned long)extObject);
+
+        if (extObject == 0 || hasValue == 0) {
+            return;
+        }
+
+        uint64_t svrId = 0;
+        YMSafeReadMemory(extObject + 360, &svrId, sizeof(svrId));
+
+        std::string *sessionString = (std::string *)(extObject + 392);
+        NSString *sessionText = YMNSStringFromLibcppStringObject((const void *)(extObject + 392));
+
+        uint32_t originType = 0;
+        uint64_t originCreateTimeMs = 0;
+        uint32_t originCreateTimeSec = 0;
+        YMSafeReadMemory(outWrap + 264, &originType, sizeof(originType));
+        YMSafeReadMemory(outWrap + 256, &originCreateTimeMs, sizeof(originCreateTimeMs));
+        YMSafeReadMemory(outWrap + 276, &originCreateTimeSec, sizeof(originCreateTimeSec));
+
+        NSString *originContent = YMNSStringFromLibcppStringObject((const void *)(outWrap + 304));
+        NSString *originMsgSource = YMNSStringFromLibcppStringObject((const void *)(outWrap + 352));
+        NSString *originContentLog = YMRevokeMessageTypeShouldShowContent(originType) ? YMRevokeShortLogText(originContent) : @"<非文本，不展开>";
+        NSString *originMsgSourceLog = YMRevokeShortLogText(originMsgSource);
+
+        YMLog(@"[RevokeCallsite] origin captured session=%@ svrId=%llu type=%@ content=%@ msgSource=%@",
+              sessionText ?: @"",
+              (unsigned long long)svrId,
+              YMRevokeMessageTypeName(originType),
+              originContentLog ?: @"",
+              originMsgSourceLog ?: @"");
+
+        NSString *revokeXML = @"";
+        NSString *revokerWxid = @"";
+        NSString *revokerDisplayName = @"";
+        NSString *replaceMsg = @"";
+        NSString *msgID = @"";
+        NSString *newMsgID = @"";
+        uintptr_t revokeWrap = 0;
+        BOOL foundRevokeContext = YMFindRevokeContextAroundCallsite(originalSP,
+                                                                    savedRegs,
+                                                                    svrId,
+                                                                    &revokeWrap,
+                                                                    &revokeXML,
+                                                                    &revokerWxid,
+                                                                    &revokerDisplayName,
+                                                                    &replaceMsg,
+                                                                    &msgID,
+                                                                    &newMsgID);
+
+        YMLog(@"[RevokeCallsite] revoke context found=%d rawWrap=0x%lx revoker=%@ displayName=%@ replace=%@ msgid=%@ newmsgid=%@ xml=%@",
+              foundRevokeContext ? 1 : 0,
+              (unsigned long)revokeWrap,
+              revokerWxid ?: @"",
+              revokerDisplayName ?: @"",
+              replaceMsg ?: @"",
+              msgID ?: @"",
+              newMsgID ?: @"",
+              revokeXML ?: @"");
+
+        if (YMRevokeLastNoticeSvrIdInCallsite != svrId) {
+            YMRevokeLastNoticeSvrIdInCallsite = svrId;
+            YMInsertDetailedAntiRevokeNoticeFromOrigin(sessionString,
+                                                       sessionText,
+                                                       svrId,
+                                                       originType,
+                                                       originContent,
+                                                       originCreateTimeMs,
+                                                       originCreateTimeSec,
+                                                       revokerWxid,
+                                                       revokerDisplayName,
+                                                       replaceMsg,
+                                                       msgID,
+                                                       newMsgID.length > 0 ? newMsgID : [NSString stringWithFormat:@"%llu", (unsigned long long)svrId]);
+        } else {
+            YMLog(@"[RevokeCallsite] same svrId already inserted, skip duplicate notice. svrId=%llu",
+                  (unsigned long long)svrId);
+        }
+
+        // 原消息已经拿到了，后面就别让微信拿这个 __dst 继续搞撤回 UI 了。
+        // 先只清 flag，不析构这个栈上 MessageWrap。
+        // 这是试水版本，目的是确认后面的撤回 UI 能不能被绕掉。
+        *((volatile uint8_t *)(outWrap + 616)) = 0;
+        YMLog(@"[RevokeCallsite] clear local origin optional flag to prevent current UI revoke replacement");
+    }
+}
+
+#if defined(__aarch64__)
+__asm__(
+".text\n"
+".align 2\n"
+".globl _YMRevokeOriginCallsiteStub\n"
+"_YMRevokeOriginCallsiteStub:\n"
+"    sub sp, sp, #0x100\n"
+"    stp x0,  x1,  [sp, #0x00]\n"
+"    stp x2,  x3,  [sp, #0x10]\n"
+"    stp x4,  x5,  [sp, #0x20]\n"
+"    stp x6,  x7,  [sp, #0x30]\n"
+"    stp x8,  x9,  [sp, #0x40]\n"
+"    stp x10, x11, [sp, #0x50]\n"
+"    stp x12, x13, [sp, #0x60]\n"
+"    stp x14, x15, [sp, #0x70]\n"
+"    stp x16, x17, [sp, #0x80]\n"
+"    stp x18, x19, [sp, #0x90]\n"
+"    stp x20, x21, [sp, #0xA0]\n"
+"    stp x22, x23, [sp, #0xB0]\n"
+"    stp x24, x25, [sp, #0xC0]\n"
+"    stp x26, x27, [sp, #0xD0]\n"
+"    stp x28, x29, [sp, #0xE0]\n"
+"    str x30,      [sp, #0xF0]\n"
+"    add x0, sp, #0x100\n"        // x0 = 原 sub_2B707E0 的 SP
+"    mov x1, sp\n"               // x1 = 当前保存寄存器的区域，给 helper 扫描 raw revoke wrap
+"    bl _YMRevokeOriginCallsiteHelper\n"
+"    ldp x0,  x1,  [sp, #0x00]\n"
+"    ldp x2,  x3,  [sp, #0x10]\n"
+"    ldp x4,  x5,  [sp, #0x20]\n"
+"    ldp x6,  x7,  [sp, #0x30]\n"
+"    ldp x8,  x9,  [sp, #0x40]\n"
+"    ldp x10, x11, [sp, #0x50]\n"
+"    ldp x12, x13, [sp, #0x60]\n"
+"    ldp x14, x15, [sp, #0x70]\n"
+"    ldp x16, x17, [sp, #0x80]\n"
+"    ldp x18, x19, [sp, #0x90]\n"
+"    ldp x20, x21, [sp, #0xA0]\n"
+"    ldp x22, x23, [sp, #0xB0]\n"
+"    ldp x24, x25, [sp, #0xC0]\n"
+"    ldp x26, x27, [sp, #0xD0]\n"
+"    ldp x28, x29, [sp, #0xE0]\n"
+"    ldr x30,      [sp, #0xF0]\n"
+"    add sp, sp, #0x100\n"
+
+// 还原 0x2B71244 ~ 0x2B71250 被覆盖的 4 条指令：
+//   LDR X22, [SP,#0x2D8]
+//   CBZ X22, 0x2B71274
+//   ADD X8, X22, #8
+//   MOV X9, #-1
+"    ldr x22, [sp, #0x2D8]\n"
+"    cbz x22, L_YMRevokeCallsiteZero\n"
+"    add x8, x22, #8\n"
+"    mov x9, #-1\n"
+"    adrp x16, _YMRevokeOriginCallsiteContinueAddress@PAGE\n"
+"    ldr  x16, [x16, _YMRevokeOriginCallsiteContinueAddress@PAGEOFF]\n"
+"    br x16\n"
+"L_YMRevokeCallsiteZero:\n"
+"    adrp x16, _YMRevokeOriginCallsiteZeroBranchAddress@PAGE\n"
+"    ldr  x16, [x16, _YMRevokeOriginCallsiteZeroBranchAddress@PAGEOFF]\n"
+"    br x16\n"
+);
+#endif
+
+#pragma mark - 撤回 DeleteMessages Guard
+
+typedef int64_t (*YMDeleteMessagesFunc)(int64_t manager, std::string *session, int64_t *messageVector, int flag);
+
+static BOOL YMRevokeRestoreOriginalDeleteMessages(void) {
+    if (!YMRevokeDeleteMessagesRuntimeAddress || !YMRevokeDeleteMessagesHasSavedOriginalBytes) {
+        return NO;
+    }
+    return YMGroupExitWriteCodeBytes(YMRevokeDeleteMessagesRuntimeAddress,
+                                     YMRevokeDeleteMessagesOriginalBytes,
+                                     sizeof(YMRevokeDeleteMessagesOriginalBytes),
+                                     "revoke DeleteMessages",
+                                     "restore original");
+}
+
+static BOOL YMRevokeReapplyDeleteMessagesHook(void) {
+    if (!YMRevokeDeleteMessagesRuntimeAddress) {
+        return NO;
+    }
+    return YMGroupExitWriteCodeBytes(YMRevokeDeleteMessagesRuntimeAddress,
+                                     YMRevokeDeleteMessagesHookBytes,
+                                     sizeof(YMRevokeDeleteMessagesHookBytes),
+                                     "revoke DeleteMessages",
+                                     "reapply hook");
+}
+
+static int64_t YMRevokeCallOriginalDeleteMessages(int64_t manager, std::string *session, int64_t *messageVector, int flag) {
+    if (!YMRevokeDeleteMessagesRuntimeAddress) {
+        return 0;
+    }
+
+    if (YMRevokeDeleteMessagesCallingOriginal.exchange(true)) {
+        YMLog(@"[RevokeCallsite] recursive DeleteMessages original call suppressed");
+        return 0;
+    }
+
+    BOOL restored = YMRevokeRestoreOriginalDeleteMessages();
+    if (!restored) {
+        YMLog(@"[RevokeCallsite] restore original DeleteMessages failed");
+        YMRevokeDeleteMessagesCallingOriginal.store(false);
+        return 0;
+    }
+
+    YMDeleteMessagesFunc Original = (YMDeleteMessagesFunc)YMRevokeDeleteMessagesRuntimeAddress;
+    int64_t result = 0;
+    try {
+        result = Original(manager, session, messageVector, flag);
+    } catch (...) {
+        YMLog(@"[RevokeCallsite] exception while calling original DeleteMessages");
+    }
+
+    YMRevokeReapplyDeleteMessagesHook();
+    YMRevokeDeleteMessagesCallingOriginal.store(false);
+    return result;
+}
+
+static int64_t YMRevokeDeleteMessagesHook(int64_t manager, std::string *session, int64_t *messageVector, int flag) {
+    @autoreleasepool {
+        NSString *sessionText = YMNSStringFromLibcppStringObject(session);
+
+        uint64_t count = 0;
+        if (messageVector) {
+            uint64_t begin = (uint64_t)messageVector[0];
+            uint64_t end = (uint64_t)messageVector[1];
+            if (end >= begin && begin != 0) {
+                count = (end - begin) / 616;
+            }
+        }
+
+        if (YMRevokeDeleteGuardActive) {
+            YMLog(@"[RevokeCallsite] skip DeleteMessages inside revoke manager=0x%llx session=%@ count=%llu flag=%d targetSvrId=%llu",
+                  (unsigned long long)manager,
+                  sessionText ?: @"",
+                  (unsigned long long)count,
+                  flag,
+                  (unsigned long long)YMRevokeTargetSvrIdForDeleteGuard);
+
+            YMRevokeDeleteGuardActive = NO;
+            YMRevokeTargetSvrIdForDeleteGuard = 0;
+            YMRevokeLastNoticeSvrIdInCallsite = 0;
+
+            // 伪装删除成功，避免上层重试或卡同步。
+            return 1;
+        }
+
+        return YMRevokeCallOriginalDeleteMessages(manager, session, messageVector, flag);
+    }
+}
+
+static BOOL YMPatchRevokeLocalCallsiteOnly(uintptr_t slide, NSString *source) {
+    const YMWeChatAdaptProfile *profile = YMGetActiveProfile();
+    if (!profile) {
+        YMLog(@"[RevokeCallsite] install failed: no active profile");
+        return NO;
+    }
+
+    if (profile->revokeOriginCallsiteAfterQueryVA == 0 ||
+        profile->revokeOriginCallsiteContinueVA == 0 ||
+        profile->revokeOriginCallsiteZeroBranchVA == 0) {
+        YMLog(@"[RevokeCallsite] install failed: profile has no revoke callsite address, profile=%s",
+              profile->displayName);
+        return NO;
+    }
+
+    uintptr_t callsite = slide + profile->revokeOriginCallsiteAfterQueryVA;
+
+    YMRevokeOriginCallsiteContinueAddress = slide + profile->revokeOriginCallsiteContinueVA;
+    YMRevokeOriginCallsiteZeroBranchAddress = slide + profile->revokeOriginCallsiteZeroBranchVA;
+
+    YMLog(@"[RevokeCallsite] install local callsite only source=%@ profile=%s callsite=0x%lx continue=0x%lx zero=0x%lx delete=0x%lx",
+          source ?: @"",
+          profile->displayName,
+          (unsigned long)callsite,
+          (unsigned long)YMRevokeOriginCallsiteContinueAddress,
+          (unsigned long)YMRevokeOriginCallsiteZeroBranchAddress,
+          (unsigned long)(profile->revokeDeleteMessagesVA ? slide + profile->revokeDeleteMessagesVA : 0));
+
+    BOOL okCallsite = YMPatchARM64AbsoluteJump(callsite,
+                                               (uintptr_t)&YMRevokeOriginCallsiteStub,
+                                               "revoke origin local callsite after GetMessageBySvrId");
+
+    YMLog(@"[RevokeCallsite] install result callsite=%@",
+          okCallsite ? @"OK" : @"FAIL");
+
+    return okCallsite;
+}
+
 #pragma mark - 撤回入口 Hook
 
 /*
@@ -2235,11 +3032,11 @@ static BOOL YMPatchAntiRevokeWithSlide(intptr_t slide, NSString *source) {
     } else if (profile->hookMode == YMRevokeHookModeInline) {
         /*
          4.1.10：
-         没有 off_xxx 热补丁指针，只能直接 patch 函数入口。
+         先不拦入口了，入口一 return 就拿不到原消息。
+         这里只 patch sub_2B707E0 里查完原消息后的那个点。
+         拿到内容后把 __dst flag 清掉，让后面别再撤 UI。
          */
-        ok = YMPatchARM64AbsoluteJump(pointerAddress,
-                                      hookAddress,
-                                      "revoke inline hook -> YMHandleSysMsgRevokeMsgHook");
+        ok = YMPatchRevokeLocalCallsiteOnly((uintptr_t)slide, source ?: @"anti revoke install");
     } else {
         YMLog(@"unknown revoke hook mode: %d", profile->hookMode);
         ok = NO;
@@ -2339,7 +3136,13 @@ static BOOL YMPatchMultiOpenWithWeChatDylibSlide(intptr_t slide, NSString *sourc
           (unsigned long)tryPreventAddress,
           (unsigned long)processCountAddress);
 
-    
+    /*
+     多开需要尽量同时绕过两层：
+       1. TryPreventMultiInstance：启动早期防多开逻辑。
+       2. GetMainWeixinProcessCount：通过 NSRunningApplication 统计同 BundleID 进程数量。
+          4.1.10 如果不 patch 这个函数，第二个微信实例会检测到已有进程，
+          很容易进入反复授权 / 防多开流程。
+     */
     BOOL patchedAny = NO;
     BOOL finalOK = YES;
 
@@ -2488,6 +3291,61 @@ static void YMRegisterDyldCallbackIfNeeded(void) {
     YMLog(@"register dyld add image callback");
     _dyld_register_func_for_add_image(YMDyldImageAdded);
 }
+
+#pragma mark - 功能安装
+
+static void YMInstallAssistantMenu(void) {
+    dispatch_after(dispatch_time(DISPATCH_TIME_NOW, (int64_t)(2 * NSEC_PER_SEC)),
+                   dispatch_get_main_queue(), ^{
+        [[MenuManager shareInstance] initAssistantMenuItems];
+    });
+}
+
+static void YMInstallAntiUpdateIfNeeded(void) {
+    dispatch_after(dispatch_time(DISPATCH_TIME_NOW, (int64_t)(1 * NSEC_PER_SEC)),
+                   dispatch_get_main_queue(), ^{
+        NSString *loadFlag = [[NSUserDefaults standardUserDefaults] objectForKey:kIsFirstLoad];
+        if (loadFlag.length < 3) {
+            [[NSUserDefaults standardUserDefaults] setBool:YES forKey:kAntiUpdate];
+            [[NSUserDefaults standardUserDefaults] setObject:@"SOVIET" forKey:kIsFirstLoad];
+        }
+
+        if ([[NSUserDefaults standardUserDefaults] boolForKey:kAntiUpdate]) {
+            YMDisableSparkleAutoUpdateDefaults();
+            YMDisableSparkleByRuntimeHook();
+        }
+    });
+}
+
+static void YMInstallAntiRevokeIfNeeded(void) {
+    if (![[NSUserDefaults standardUserDefaults] boolForKey:kAntiRevoke]) {
+        YMLog(@"anti revoke disabled by user defaults, skip");
+        return;
+    }
+
+    /*
+     先注册 dyld 回调。
+     如果 wechat.dylib 在之后加载，可以第一时间拿到 slide。
+    */
+    YMRegisterDyldCallbackIfNeeded();
+
+    /*
+     再主动扫描一次。
+     如果 wechat.dylib 在之前已经加载，可以直接安装 hook。
+    */
+    YMInstallAntiRevokePatch();
+
+    dispatch_after(dispatch_time(DISPATCH_TIME_NOW, (int64_t)(1 * NSEC_PER_SEC)),
+                   dispatch_get_main_queue(), ^{
+        YMInstallAntiRevokePatch();
+    });
+
+    dispatch_after(dispatch_time(DISPATCH_TIME_NOW, (int64_t)(3 * NSEC_PER_SEC)),
+                   dispatch_get_main_queue(), ^{
+        YMInstallAntiRevokePatch();
+    });
+}
+
 
 #pragma mark - constructor
 
