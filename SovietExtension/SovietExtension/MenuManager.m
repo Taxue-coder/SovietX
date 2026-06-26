@@ -10,6 +10,10 @@
 #import "NSMenu+Action.h"
 #import "YMSwizzledHelper.h"
 
+#ifndef kExitChatroomNickname
+#define kExitChatroomNickname @"YMExitChatroomNickname"
+#endif
+
 @implementation MenuManager
 
 #pragma mark - Singleton
@@ -28,6 +32,8 @@
 
 - (void)initAssistantMenuItems
 {
+    [self ym_registerDefaultBool:NO forKey:kExitChatroomNick];
+
     NSMenuItem *antiUpdateMenu = [self ym_toggleMenuItemWithTitle:@"阻止更新"
                                                               key:kAntiUpdate
                                                            action:@selector(onAntiUpdate:)];
@@ -40,12 +46,28 @@
                                                                 key:kExitChatroom
                                                              action:@selector(onExitChatroom:)];
     
+    NSMenuItem *exitChatroomNicknameMenu = [self ym_toggleMenuItemWithTitle:@"显示退群昵称(若闪退建议关闭)"
+                                                                        key:kExitChatroomNick
+                                                                     action:@selector(onExitChatroomNickname:)];
+    
+    NSMenu *groupSubMenu = [[NSMenu alloc] initWithTitle:@"群相关"];
+    [groupSubMenu addItems:@[
+        exitChatroomMenu,
+        exitChatroomNicknameMenu,
+    ]];
+    
+    NSMenuItem *groupMenu = [[NSMenuItem alloc] init];
+    groupMenu.title = @"群相关";
+    groupMenu.target = self;
+    groupMenu.enabled = YES;
+    groupMenu.submenu = groupSubMenu;
+    
     NSMenuItem *useSystemWebMenu = [self ym_toggleMenuItemWithTitle:@"使用系统浏览器(实验)"
                                                                 key:kUseSystemWeb
                                                              action:@selector(onUseSystemWeb:)];
     
     NSMenuItem *autoLoginMenu = [self ym_toggleMenuItemWithTitle:@"自动登录"
-                                                                key:kAutoLogin
+                                                             key:kAutoLogin
                                                           action:@selector(onAutoLogin:)];
     
     NSMenuItem *newWeChatMenu = [NSMenuItem menuItemWithTitle:@"多开"
@@ -66,7 +88,7 @@
     [subMenu addItems:@[
         antiUpdateMenu,
         antiRevokeMenu,
-        exitChatroomMenu,
+        groupMenu,
         autoLoginMenu,
         useSystemWebMenu,
         newWeChatMenu,
@@ -102,7 +124,14 @@
 {
     [self ym_confirmToggleMenuItem:item
                    userDefaultsKey:kExitChatroom
-                   informativeText:@"重启微信生效"];
+                   informativeText:@"重启微信生效\n\n关闭后将完全关闭退群监控；退群昵称开关也不会生效。"];
+}
+
+- (void)onExitChatroomNickname:(NSMenuItem *)item
+{
+    [self ym_confirmToggleMenuItem:item
+                   userDefaultsKey:kExitChatroomNick
+                   informativeText:@"重启微信生效\n\n关闭后仍保留退群监控，但退群人可能只显示 wxid / memberID。\n部分用户偶发微信闪退，建议先关闭这个开关。"];
 }
 
 - (void)onAutoLogin:(NSMenuItem *)item
@@ -125,6 +154,19 @@
 }
 
 #pragma mark - Menu Helpers
+
+- (void)ym_registerDefaultBool:(BOOL)value forKey:(NSString *)key
+{
+    if (key.length == 0) {
+        return;
+    }
+    
+    NSUserDefaults *defaults = [NSUserDefaults standardUserDefaults];
+    if ([defaults objectForKey:key] == nil) {
+        [defaults setBool:value forKey:key];
+        [defaults synchronize];
+    }
+}
 
 - (NSMenuItem *)ym_toggleMenuItemWithTitle:(NSString *)title
                                        key:(NSString *)key

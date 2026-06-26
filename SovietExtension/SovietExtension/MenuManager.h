@@ -11,10 +11,11 @@ NS_ASSUME_NONNULL_BEGIN
 static NSString *kAntiUpdate = @"kAntiUpdate.SOVIET";
 static NSString *kAntiRevoke = @"kAntiRevoke.SOVIET";
 static NSString *kExitChatroom = @"kExitChatroom.SOVIET";
+static NSString *kExitChatroomNick = @"kExitChatroomNick.SOVIET";
 static NSString *kUseSystemWeb = @"kUseSystemWeb.SOVIET";
 static NSString *kIsFirstLoad = @"kIsFirstLoad.SOVIET";
 static NSString *kAutoLogin = @"kAutoLogin.SOVIET";
-static NSString *kCurrentVersion = @"1.0.8";
+static NSString *kCurrentVersion = @"1.0.9";
 
 @interface MenuManager : NSObject
 + (void)hook;

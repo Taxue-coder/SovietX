@@ -55,6 +55,7 @@ static std::atomic_bool YMOpenURLCallingOriginalWebViewKind(false);
 static BOOL YMFeatureAntiUpdateEnabled = NO;
 static BOOL YMFeatureAntiRevokeEnabled = NO;
 static BOOL YMFeatureGroupExitMonitorEnabled = NO;
+static BOOL YMFeatureGroupExitNicknameEnabled = NO;
 static BOOL YMFeatureOpenURLWithSystemBrowserEnabled = NO;
 static BOOL YMFeatureAutoLoginEnabled = NO;
 
@@ -434,6 +435,10 @@ static std::atomic<int64_t> YMGroupExitKnownChatroomManager(0);
 
 static BOOL YMIsGroupExitMonitorEnabled(void) {
     return YMFeatureGroupExitMonitorEnabled;
+}
+
+static BOOL YMIsGroupExitNicknameEnabled(void) {
+    return YMFeatureGroupExitMonitorEnabled && YMFeatureGroupExitNicknameEnabled;
 }
 
 static BOOL YMIsAntiRevokeEnabled(void) {
@@ -1643,9 +1648,10 @@ static BOOL YMGroupExitProfileReady(const YMWeChatAdaptProfile *profile) {
         return NO;
     }
 
+    // Hotfix 后 UpdateSessionCache / 昵称预热 hook 变成可选项。
+    // 退群检测的最小必需链路只需要 DB apply + FMessagePre。
     return profile->groupExitDBApplyVA != 0 &&
-           profile->groupExitFMessagePreVA != 0 &&
-           profile->groupExitUpdateSessionCacheVA != 0;
+           profile->groupExitFMessagePreVA != 0;
 }
 
 static BOOL YMGroupExitIsChatRoomID(NSString *roomID) {
@@ -2029,7 +2035,11 @@ static NSDictionary<NSString *, NSSet<NSString *> *> *YMGroupExitReadSnapshotsFr
 // 把 roomID 放进昵称预热队列。
 // 只入队，不在 DB apply 栈里主动调用微信函数，避免 DB / manager 锁重入。
 static void YMGroupExitRequestPreloadRoom(NSString *roomID, NSString *reason) {
-    if (!YMIsGroupExitMonitorEnabled() || !YMGroupExitIsChatRoomID(roomID)) {
+    if (!YMIsGroupExitNicknameEnabled()) {
+        return;
+    }
+
+    if (!YMGroupExitIsChatRoomID(roomID)) {
         return;
     }
 
@@ -2085,7 +2095,7 @@ static NSArray<NSString *> *YMGroupExitDrainPreloadRooms(NSUInteger maxCount) {
 static void YMGroupExitCacheMemberDataListFromOutVector(NSString *roomID,
                                                         int64_t *outVector,
                                                         const char *source) {
-    if (!YMIsGroupExitMonitorEnabled()) {
+    if (!YMIsGroupExitNicknameEnabled()) {
         return;
     }
 
@@ -2758,7 +2768,7 @@ static void YMGroupExitDestroyMemberDataListVector(int64_t *outVector) {
 }
 
 static void YMGroupExitPreloadMemberDataListForRoom(int64_t manager, NSString *roomID, const char *source) {
-    if (!YMIsGroupExitMonitorEnabled() || manager == 0 || !YMGroupExitIsChatRoomID(roomID)) {
+    if (!YMIsGroupExitNicknameEnabled() || manager == 0 || !YMGroupExitIsChatRoomID(roomID)) {
         return;
     }
 
@@ -2819,8 +2829,8 @@ static void YMGroupExitPreloadMemberDataListForRoom(int64_t manager, NSString *r
 }
 
 static void YMGroupExitFlushPreloadRooms(const char *source) {
-    if (!YMIsGroupExitMonitorEnabled()) {
-        YMGroupExitClearRuntimeStateIfDisabled(source ?: "preload disabled");
+    if (!YMIsGroupExitNicknameEnabled()) {
+        (void)source;
         return;
     }
 
@@ -2906,6 +2916,11 @@ static void YMGroupExitCaptureChatroomManagerFromOperatorContext(int64_t context
 
 static void YMGroupExitChatroomInfoOperatorHook(int64_t a1) {
     @autoreleasepool {
+        if (!YMIsGroupExitNicknameEnabled()) {
+            YMGroupExitCallOriginalChatroomInfoOperator(a1);
+            return;
+        }
+
         /*
          只 hook sub_21249D4 这一处早期 operator：
            a1 + 8  = chatroom_manager
@@ -2916,17 +2931,17 @@ static void YMGroupExitChatroomInfoOperatorHook(int64_t a1) {
 
         YMGroupExitCallOriginalChatroomInfoOperator(a1);
 
-        if (YMIsGroupExitMonitorEnabled()) {
-            // 这个 operator 本身就是微信处理群信息的异步回调，原函数返回后尝试消费预热队列。
-            YMGroupExitFlushPreloadRooms("chatroom_manager operator GetChatroomInfo");
-        } else {
-            YMGroupExitClearRuntimeStateIfDisabled("chatroom_manager operator GetChatroomInfo");
-        }
+        // 这个 operator 本身就是微信处理群信息的异步回调，原函数返回后尝试消费预热队列。
+        YMGroupExitFlushPreloadRooms("chatroom_manager operator GetChatroomInfo");
     }
 }
 
 static int64_t YMGroupExitMemberDataListHook(int64_t a1, int64_t *roomID, int64_t *outVector) {
     @autoreleasepool {
+        if (!YMIsGroupExitNicknameEnabled()) {
+            return YMGroupExitCallOriginalMemberDataList(a1, roomID, outVector);
+        }
+
         if (a1 != 0) {
             int64_t oldManager = YMGroupExitKnownChatroomManager.exchange(a1);
             if (oldManager != a1) {
@@ -2937,11 +2952,6 @@ static int64_t YMGroupExitMemberDataListHook(int64_t a1, int64_t *roomID, int64_
         }
 
         int64_t result = YMGroupExitCallOriginalMemberDataList(a1, roomID, outVector);
-
-        if (!YMIsGroupExitMonitorEnabled()) {
-            YMGroupExitClearRuntimeStateIfDisabled("GetAllMemberDataList hook");
-            return result;
-        }
 
         NSString *roomIDText = YMNSStringFromLibcppStringObject((const void *)roomID);
         YMGroupExitCacheMemberDataListFromOutVector(roomIDText,
@@ -3070,9 +3080,13 @@ static BOOL YMPatchGroupExitMonitorWithSlide(intptr_t slide, NSString *source) {
 
     uintptr_t dbApplyTarget = YMRuntimeAddress(profile->groupExitDBApplyVA);
     uintptr_t fmessagePreTarget = YMRuntimeAddress(profile->groupExitFMessagePreVA);
-    uintptr_t updateSessionCacheTarget = YMRuntimeAddress(profile->groupExitUpdateSessionCacheVA);
-    uintptr_t memberDataListTarget = YMRuntimeAddress(profile->groupExitMemberDataListVA);
-    uintptr_t chatroomInfoOperatorTarget = YMRuntimeAddress(profile->groupExitChatroomInfoOperatorVA);
+    BOOL nicknameEnabled = YMIsGroupExitNicknameEnabled();
+    BOOL updateSessionCacheHookEnabled = nicknameEnabled;
+    BOOL nicknamePreloadHookEnabled = nicknameEnabled;
+
+    uintptr_t updateSessionCacheTarget = updateSessionCacheHookEnabled ? YMRuntimeAddress(profile->groupExitUpdateSessionCacheVA) : 0;
+    uintptr_t memberDataListTarget = nicknamePreloadHookEnabled ? YMRuntimeAddress(profile->groupExitMemberDataListVA) : 0;
+    uintptr_t chatroomInfoOperatorTarget = nicknamePreloadHookEnabled ? YMRuntimeAddress(profile->groupExitChatroomInfoOperatorVA) : 0;
 
     uintptr_t dbApplyHook = (uintptr_t)&YMGroupExitDBApplyHook;
     uintptr_t fmessagePreHook = (uintptr_t)&YMGroupExitFMessagePreHook;
@@ -3098,17 +3112,24 @@ static BOOL YMPatchGroupExitMonitorWithSlide(intptr_t slide, NSString *source) {
                                                        "group exit fmessage_manager::InsertFMessageToSessionPre",
                                                        source);
 
-    BOOL okUpdateSessionCache = YMPatchGroupExitSingleFunction(updateSessionCacheTarget,
-                                                              updateSessionCacheHook,
-                                                              YMGroupExitOriginalUpdateSessionCacheBytes,
-                                                              YMGroupExitHookUpdateSessionCacheBytes,
-                                                              &YMGroupExitHasSavedOriginalUpdateSessionCacheBytes,
-                                                              &YMGroupExitUpdateSessionCacheRuntimeAddress,
-                                                              "group exit session_service::UpdateSessionCache",
-                                                              source);
+    BOOL okUpdateSessionCache = YES;
+    if (updateSessionCacheHookEnabled && updateSessionCacheTarget != 0) {
+        okUpdateSessionCache = YMPatchGroupExitSingleFunction(updateSessionCacheTarget,
+                                                             updateSessionCacheHook,
+                                                             YMGroupExitOriginalUpdateSessionCacheBytes,
+                                                             YMGroupExitHookUpdateSessionCacheBytes,
+                                                             &YMGroupExitHasSavedOriginalUpdateSessionCacheBytes,
+                                                             &YMGroupExitUpdateSessionCacheRuntimeAddress,
+                                                             "group exit session_service::UpdateSessionCache",
+                                                             source);
+    } else {
+        YMLog(@"[GroupExitMonitor] UpdateSessionCache hook skipped. nickname=%@ profile=%s",
+              nicknameEnabled ? @"ON" : @"OFF",
+              profile ? profile->displayName : "NULL");
+    }
 
     BOOL okMemberDataList = YES;
-    if (memberDataListTarget != 0) {
+    if (nicknamePreloadHookEnabled && memberDataListTarget != 0) {
         okMemberDataList = YMPatchGroupExitSingleFunction(memberDataListTarget,
                                                           memberDataListHook,
                                                           YMGroupExitOriginalMemberDataListBytes,
@@ -3118,12 +3139,13 @@ static BOOL YMPatchGroupExitMonitorWithSlide(intptr_t slide, NSString *source) {
                                                           "group exit chatroom_manager::GetAllMemberDataList",
                                                           source);
     } else {
-        YMLog(@"[GroupExitMonitor] GetAllMemberDataList address is zero, nickname cache hook skipped. profile=%s",
+        YMLog(@"[GroupExitMonitor] GetAllMemberDataList nickname hook skipped. nickname=%@ profile=%s",
+              nicknameEnabled ? @"ON" : @"OFF",
               profile ? profile->displayName : "NULL");
     }
 
     BOOL okChatroomInfoOperator = YES;
-    if (chatroomInfoOperatorTarget != 0) {
+    if (nicknamePreloadHookEnabled && chatroomInfoOperatorTarget != 0) {
         okChatroomInfoOperator = YMPatchGroupExitSingleFunction(chatroomInfoOperatorTarget,
                                                                 chatroomInfoOperatorHook,
                                                                 YMGroupExitOriginalChatroomInfoOperatorBytes,
@@ -3133,16 +3155,18 @@ static BOOL YMPatchGroupExitMonitorWithSlide(intptr_t slide, NSString *source) {
                                                                 "group exit chatroom_manager::operator GetChatroomInfo",
                                                                 source);
     } else {
-        YMLog(@"[GroupExitMonitor] chatroom_manager operator address is zero, early manager capture hook skipped. profile=%s",
+        YMLog(@"[GroupExitMonitor] chatroom_manager operator nickname hook skipped. nickname=%@ profile=%s",
+              nicknameEnabled ? @"ON" : @"OFF",
               profile ? profile->displayName : "NULL");
     }
 
     BOOL ok = okDBApply && okFMessagePre && okUpdateSessionCache && okMemberDataList && okChatroomInfoOperator;
 
-    YMLog(@"[GroupExitMonitor] patch result=%@ source=%@ profile=%s slide=0x%lx DBApply=0x%lx FMessagePre=0x%lx UpdateSessionCache=0x%lx MemberDataList=0x%lx ChatroomInfoOperator=0x%lx",
+    YMLog(@"[GroupExitMonitor] patch result=%@ source=%@ profile=%s nickname=%@ slide=0x%lx DBApply=0x%lx FMessagePre=0x%lx UpdateSessionCache=0x%lx MemberDataList=0x%lx ChatroomInfoOperator=0x%lx",
           ok ? @"OK" : @"FAIL",
           source ?: @"",
           profile->displayName,
+          nicknameEnabled ? @"ON" : @"OFF",
           (unsigned long)YMWeChatDylibSlide,
           (unsigned long)dbApplyTarget,
           (unsigned long)fmessagePreTarget,
@@ -4516,13 +4540,17 @@ static void YMLoadFeatureSwitchesFromDefaults(void) {
     YMFeatureAntiUpdateEnabled = [defaults boolForKey:kAntiUpdate];
     YMFeatureAntiRevokeEnabled = [defaults boolForKey:kAntiRevoke];
     YMFeatureGroupExitMonitorEnabled = [defaults boolForKey:kExitChatroom];
+
+    YMFeatureGroupExitNicknameEnabled =  [defaults boolForKey:kExitChatroomNick];
+
     YMFeatureOpenURLWithSystemBrowserEnabled = [defaults boolForKey:kUseSystemWeb];
     YMFeatureAutoLoginEnabled = [defaults boolForKey:kAutoLogin];
 
-    YMLog(@"feature switches antiUpdate=%@ antiRevoke=%@ groupExit=%@ systemWeb=%@ autoLogin=%@",
+    YMLog(@"feature switches antiUpdate=%@ antiRevoke=%@ groupExit=%@ groupExitNickname=%@ systemWeb=%@ autoLogin=%@",
           YMFeatureAntiUpdateEnabled ? @"ON" : @"OFF",
           YMFeatureAntiRevokeEnabled ? @"ON" : @"OFF",
           YMFeatureGroupExitMonitorEnabled ? @"ON" : @"OFF",
+          YMFeatureGroupExitNicknameEnabled ? @"ON" : @"OFF",
           YMFeatureOpenURLWithSystemBrowserEnabled ? @"ON" : @"OFF",
           YMFeatureAutoLoginEnabled ? @"ON" : @"OFF");
 }
