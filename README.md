@@ -26,7 +26,11 @@
 ## Effect / 效果展示
 
 <p align="center">
-  <img src="./1.5.png" width="600" alt="SovietExtension Effect 1" />
+  <img src="./1.6.png" width="600" alt="SovietExtension Effect 1" />
+</p>
+
+<p align="center">
+  <img src="./1.7.png" width="600" alt="SovietExtension Effect 1" />
 </p>
 
 <p align="center">
