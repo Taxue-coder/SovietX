@@ -55,7 +55,7 @@
 
 | 微信版本      | Build 号 | Apple Silicon / M 芯片 | Intel | 下载地址                                                                        | 说明                       |
 | --------- | ------: | :------------------: | :---: | --------------------------------------------------------------------------- | ------------------------ |
-| 4.1.11.23 |  269079 |         ✅ 支持         | ❌ 不支持 | [Github 归档](https://github.com/zsbai/wechat-versions/releases/tag/4.1.11.23)           | 1.1.2 已测试 |
+| 4.1.11.23 |  269079 |         ✅ 支持         | ❌ 不支持 | [Github 归档](https://github.com/zsbai/wechat-versions/releases/tag/4.1.11.23)           | [1.1.2](https://github.com/MustangYM/SovietExtension/releases/tag/1.1.2) 已测试 |
 | 4.1.10.53 |  268853 |         ✅ 支持         | ❌ 不支持 | [微信官网](https://weixin.qq.com/updates?platform=mac&version=4.1.10)           | 截止 2026-06-19，我在官网下载到的版本 |
 | 4.1.9.58  |  268602 |         ✅ 支持         | ❌ 不支持 | [GitHub 归档](https://github.com/zsbai/wechat-versions/releases/tag/4.1.9.58) | 已测试                      |
 
