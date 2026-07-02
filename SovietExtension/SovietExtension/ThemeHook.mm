@@ -9,14 +9,17 @@
 
 #import <AppKit/AppKit.h>
 #import <CoreGraphics/CoreGraphics.h>
+#import <QuartzCore/QuartzCore.h>
+#import <CoreImage/CoreImage.h>
 #import <objc/runtime.h>
 #import <dlfcn.h>
+#import <math.h>
 #import "RevokePatch.h"
 #import "MistyModeSettingsWindowController.h"
 #import "MenuManager.h"
+#import "YMColorfulBlurBackgroundView.h"
 
 #pragma mark - 默认值
-
 static const BOOL kYMDefaultMistyModeEnabled = NO;
 static const CGFloat kYMDefaultQNSViewAlphaValue = 0.90f;
 static const BOOL kYMDefaultWindowBackgroundBlurEnabled = YES;
@@ -77,6 +80,7 @@ static void YMRegisterMistyThemeDefaults(void) {
         kThemeMistyQNSAlpha: @(kYMDefaultQNSViewAlphaValue),
         kThemeMistyWindowBlurEnabled: @(kYMDefaultWindowBackgroundBlurEnabled),
         kThemeMistyWindowBlurRadius: @(kYMDefaultWindowBackgroundBlurRadius),
+        kThemeMistyColorful: @(NO),
         kThemeMistyCarrierStyle: kYMDefaultCarrierStyle,
         kThemeMistyKeepAlive: @(kYMDefaultBlurKeepAliveEnabled),
     }];
@@ -147,7 +151,7 @@ static BOOL YMBlurKeepAliveEnabled(void) {
     return YMBoolSetting(kThemeMistyKeepAlive, kYMDefaultBlurKeepAliveEnabled);
 }
 
-static BOOL YMCarrierStyleIsDark(void) {
+BOOL YMCarrierStyleIsDark(void) {
     NSString *style = YMStringSetting(kThemeMistyCarrierStyle, kYMDefaultCarrierStyle);
     return ![style isEqualToString:kThemeMistyCarrierStyleLight];
 }
@@ -158,6 +162,58 @@ static CGFloat YMWindowBlurCarrierAlpha(void) {
     }
 
     return YMCarrierStyleIsDark() ? kYMCarrierAlphaDark : kYMCarrierAlphaLight;
+}
+
+#pragma mark - Colorful 风格动态渐变背景
+
+BOOL YMColorfulBlurBackgroundEnabled(void) {
+    if (!YMMistyModeEnabled()) return NO;
+    if (!YMBoolSetting(kThemeMistyColorful, NO)) return NO;
+    if (!YMWindowBackgroundBlurEnabled()) return NO;
+    if (YMWindowBackgroundBlurRadius() <= 0) return NO;
+    return YES;
+}
+
+static YMColorfulBlurBackgroundView *YMFindColorfulBlurBackgroundViewInContainer(NSView *container) {
+    if (!container) return nil;
+
+    for (NSView *subview in container.subviews) {
+        if ([subview.identifier isEqualToString:kYMColorfulBlurBackgroundViewIdentifier] &&
+            [subview isKindOfClass:[YMColorfulBlurBackgroundView class]]) {
+            return (YMColorfulBlurBackgroundView *)subview;
+        }
+    }
+
+    return nil;
+}
+
+static void YMEnsureColorfulBlurBackgroundInContainer(NSView *container, NSView *qnsView) {
+    if (!container || !qnsView) return;
+
+    YMColorfulBlurBackgroundView *colorfulView = YMFindColorfulBlurBackgroundViewInContainer(container);
+
+    if (!YMColorfulBlurBackgroundEnabled()) {
+        if (colorfulView) {
+            [colorfulView removeFromSuperview];
+        }
+        return;
+    }
+
+    if (!colorfulView) {
+        colorfulView = [[YMColorfulBlurBackgroundView alloc] initWithFrame:container.bounds];
+        [container addSubview:colorfulView positioned:NSWindowBelow relativeTo:qnsView];
+        YMLog(@"已插入 Colorful 动态渐变背景 view：%@", colorfulView);
+    } else {
+        colorfulView.frame = container.bounds;
+        if (colorfulView.superview != container) {
+            [colorfulView removeFromSuperview];
+            [container addSubview:colorfulView positioned:NSWindowBelow relativeTo:qnsView];
+        } else {
+            [container addSubview:colorfulView positioned:NSWindowBelow relativeTo:qnsView];
+        }
+    }
+
+    [colorfulView ym_updateColorfulBackgroundIfNeeded];
 }
 
 #pragma mark - 工具：判断 QNSView
@@ -173,13 +229,6 @@ static BOOL YMIsQNSView(NSView *view) {
 
 
 #pragma mark - 工具：窗口过滤
-
-/// 只排除 macOS 顶部状态栏图标、菜单、popover、tooltip 这类明显不该处理的小窗口。
-/// 不再用 NSPanel / 非 normal level / 大尺寸窗口作为强过滤条件，避免误伤微信登录窗口。
-///
-/// 说明：
-/// - 登录窗口可能不是普通主窗口，也可能暂时没有 QNSView，所以不能要求“必须包含 QNSView”。
-/// - 状态栏图标、菜单窗口通常类名包含 Status/Menu/Popover/Tooltip，或者尺寸非常小。
 static BOOL YMShouldSkipMistyEffectForWindow(NSWindow *window) {
     if (!window) {
         return YES;
@@ -193,7 +242,7 @@ static BOOL YMShouldSkipMistyEffectForWindow(NSWindow *window) {
         @"Tooltip",
         @"TouchBar"
     ];
-
+    
     for (NSString *keyword in blockedKeywords) {
         if ([className rangeOfString:keyword options:NSCaseInsensitiveSearch].location != NSNotFound) {
             return YES;
@@ -401,6 +450,7 @@ static void YMInstallBlurBackgroundBehindQNSView(NSView *qnsView) {
 
         YMMakeWindowTransparent(window);
         YMMakeContainerBlurCarrier(container);
+        YMEnsureColorfulBlurBackgroundInContainer(container, qnsView);
         YMMakeViewTransparent(qnsView);
     }
     @finally {

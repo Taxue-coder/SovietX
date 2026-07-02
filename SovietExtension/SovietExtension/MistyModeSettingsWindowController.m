@@ -16,6 +16,7 @@
 @property (nonatomic, strong) NSSlider *blurRadiusSlider;
 @property (nonatomic, strong) NSTextField *blurRadiusValueLabel;
 @property (nonatomic, strong) NSButton *enableBlurCheckbox;
+@property (nonatomic, strong) NSButton *colorfulCheckbox;
 @property (nonatomic, strong) NSPopUpButton *carrierStylePopup;
 @property (nonatomic, strong) NSButton *keepAliveCheckbox;
 @end
@@ -31,6 +32,7 @@
         kThemeMistyQNSAlpha: @(0.90),
         kThemeMistyWindowBlurEnabled: @(YES),
         kThemeMistyWindowBlurRadius: @(10),
+        kThemeMistyColorful: @(NO),
         kThemeMistyCarrierStyle: kThemeMistyCarrierStyleDark,
         kThemeMistyKeepAlive: @(YES),
     }];
@@ -51,7 +53,7 @@
 
 + (NSPanel *)ym_createPanel
 {
-    NSRect frame = NSMakeRect(0, 0, 560, 520);
+    NSRect frame = NSMakeRect(0, 0, 560, 580);
     NSWindowStyleMask styleMask = NSWindowStyleMaskTitled | NSWindowStyleMaskClosable;
 
     NSPanel *panel = [[NSPanel alloc] initWithContentRect:frame
@@ -99,90 +101,102 @@
     effect.state = NSVisualEffectStateActive;
     [contentView addSubview:effect];
 
-    NSTextField *titleLabel = [self ym_labelWithFrame:NSMakeRect(32, 464, 300, 28)
+    NSTextField *titleLabel = [self ym_labelWithFrame:NSMakeRect(32, 524, 300, 28)
                                                 text:@"迷离模式"
                                                 font:[NSFont systemFontOfSize:22 weight:NSFontWeightSemibold]
                                                color:[NSColor colorWithCalibratedWhite:0.98 alpha:1.0]];
     [contentView addSubview:titleLabel];
 
-    NSTextField *subtitleLabel = [self ym_labelWithFrame:NSMakeRect(32, 436, 460, 20)
-                                                   text:@"调节窗口透明度与模糊度"
+    NSTextField *subtitleLabel = [self ym_labelWithFrame:NSMakeRect(32, 496, 460, 20)
+                                                   text:@"调节透明、模糊与流光氛围"
                                                    font:[NSFont systemFontOfSize:12 weight:NSFontWeightRegular]
                                                   color:[NSColor colorWithCalibratedWhite:0.72 alpha:1.0]];
     [contentView addSubview:subtitleLabel];
 
-    NSView *card = [self ym_cardViewWithFrame:NSMakeRect(24, 86, 512, 330)];
+    NSView *card = [self ym_cardViewWithFrame:NSMakeRect(24, 86, 512, 390)];
     [contentView addSubview:card];
 
-    self.enableBlurCheckbox = [[NSButton alloc] initWithFrame:NSMakeRect(26, 280, 220, 24)];
+    self.enableBlurCheckbox = [[NSButton alloc] initWithFrame:NSMakeRect(26, 340, 220, 24)];
     self.enableBlurCheckbox.buttonType = NSSwitchButton;
     self.enableBlurCheckbox.title = @"启用背景模糊";
     self.enableBlurCheckbox.font = [NSFont systemFontOfSize:14 weight:NSFontWeightMedium];
     self.enableBlurCheckbox.target = self;
     self.enableBlurCheckbox.action = @selector(themeCheckboxChanged:);
     [card addSubview:self.enableBlurCheckbox];
-    [card addSubview:[self ym_labelWithFrame:NSMakeRect(48, 258, 420, 18)
-                                        text:@"开启后使用背景模糊；关闭后仅保留透明度效果，建议打开。"
+    [card addSubview:[self ym_labelWithFrame:NSMakeRect(48, 318, 420, 18)
+                                        text:@"开启后让窗口背后的桌面产生柔和虚化；关闭后仅保留界面透明。"
                                         font:[NSFont systemFontOfSize:11 weight:NSFontWeightRegular]
                                        color:[NSColor colorWithCalibratedWhite:0.62 alpha:1.0]]];
 
-    [card addSubview:[self ym_labelWithFrame:NSMakeRect(26, 220, 120, 20)
+    self.colorfulCheckbox = [[NSButton alloc] initWithFrame:NSMakeRect(26, 286, 220, 24)];
+    self.colorfulCheckbox.buttonType = NSSwitchButton;
+    self.colorfulCheckbox.title = @"启用流光氛围";
+    self.colorfulCheckbox.font = [NSFont systemFontOfSize:14 weight:NSFontWeightMedium];
+    self.colorfulCheckbox.target = self;
+    self.colorfulCheckbox.action = @selector(themeCheckboxChanged:);
+    [card addSubview:self.colorfulCheckbox];
+    [card addSubview:[self ym_labelWithFrame:NSMakeRect(48, 264, 420, 18)
+                                        text:@"一种很牛批的效果，几乎没有多余性能损耗。"
+                                        font:[NSFont systemFontOfSize:11 weight:NSFontWeightRegular]
+                                       color:[NSColor colorWithCalibratedWhite:0.62 alpha:1.0]]];
+
+    [card addSubview:[self ym_labelWithFrame:NSMakeRect(26, 226, 120, 20)
                                         text:@"界面透明度"
                                         font:[NSFont systemFontOfSize:13 weight:NSFontWeightMedium]
                                        color:[NSColor colorWithCalibratedWhite:0.92 alpha:1.0]]];
-    self.alphaValueLabel = [self ym_labelWithFrame:NSMakeRect(430, 220, 52, 20)
+    self.alphaValueLabel = [self ym_labelWithFrame:NSMakeRect(430, 226, 52, 20)
                                              text:@"90%"
                                              font:[NSFont monospacedDigitSystemFontOfSize:12 weight:NSFontWeightMedium]
                                             color:[NSColor colorWithCalibratedWhite:0.86 alpha:1.0]];
     self.alphaValueLabel.alignment = NSTextAlignmentRight;
     [card addSubview:self.alphaValueLabel];
 
-    self.alphaSlider = [[NSSlider alloc] initWithFrame:NSMakeRect(26, 194, 456, 24)];
+    self.alphaSlider = [[NSSlider alloc] initWithFrame:NSMakeRect(26, 200, 456, 24)];
     self.alphaSlider.minValue = 0.60;
     self.alphaSlider.maxValue = 1.00;
     self.alphaSlider.target = self;
     self.alphaSlider.action = @selector(alphaSliderChanged:);
     [card addSubview:self.alphaSlider];
-    [card addSubview:[self ym_labelWithFrame:NSMakeRect(26, 174, 456, 18)
-                                        text:@"数值越低，底部模糊背景透出越明显；推荐 85% ~ 95%"
+    [card addSubview:[self ym_labelWithFrame:NSMakeRect(26, 180, 456, 18)
+                                        text:@"数值越低，底部模糊与流光越明显；推荐 85% ~ 95%。"
                                         font:[NSFont systemFontOfSize:11 weight:NSFontWeightRegular]
                                        color:[NSColor colorWithCalibratedWhite:0.62 alpha:1.0]]];
 
-    [card addSubview:[self ym_labelWithFrame:NSMakeRect(26, 136, 120, 20)
+    [card addSubview:[self ym_labelWithFrame:NSMakeRect(26, 142, 120, 20)
                                         text:@"模糊程度"
                                         font:[NSFont systemFontOfSize:13 weight:NSFontWeightMedium]
                                        color:[NSColor colorWithCalibratedWhite:0.92 alpha:1.0]]];
-    self.blurRadiusValueLabel = [self ym_labelWithFrame:NSMakeRect(430, 136, 52, 20)
+    self.blurRadiusValueLabel = [self ym_labelWithFrame:NSMakeRect(430, 142, 52, 20)
                                                   text:@"10"
                                                   font:[NSFont monospacedDigitSystemFontOfSize:12 weight:NSFontWeightMedium]
                                                  color:[NSColor colorWithCalibratedWhite:0.86 alpha:1.0]];
     self.blurRadiusValueLabel.alignment = NSTextAlignmentRight;
     [card addSubview:self.blurRadiusValueLabel];
 
-    self.blurRadiusSlider = [[NSSlider alloc] initWithFrame:NSMakeRect(26, 110, 456, 24)];
+    self.blurRadiusSlider = [[NSSlider alloc] initWithFrame:NSMakeRect(26, 116, 456, 24)];
     self.blurRadiusSlider.minValue = 0;
     self.blurRadiusSlider.maxValue = 80;
     self.blurRadiusSlider.target = self;
     self.blurRadiusSlider.action = @selector(blurRadiusSliderChanged:);
     [card addSubview:self.blurRadiusSlider];
-    [card addSubview:[self ym_labelWithFrame:NSMakeRect(26, 90, 456, 18)
-                                        text:@"数值越大越朦胧, 推荐10。"
+    [card addSubview:[self ym_labelWithFrame:NSMakeRect(26, 96, 456, 18)
+                                        text:@"数值越大越朦胧；推荐 10，过高会让背景细节变少。"
                                         font:[NSFont systemFontOfSize:11 weight:NSFontWeightRegular]
                                        color:[NSColor colorWithCalibratedWhite:0.62 alpha:1.0]]];
 
-    [card addSubview:[self ym_labelWithFrame:NSMakeRect(26, 52, 120, 22)
+    [card addSubview:[self ym_labelWithFrame:NSMakeRect(26, 58, 120, 22)
                                         text:@"风格"
                                         font:[NSFont systemFontOfSize:13 weight:NSFontWeightMedium]
                                        color:[NSColor colorWithCalibratedWhite:0.92 alpha:1.0]]];
-    self.carrierStylePopup = [[NSPopUpButton alloc] initWithFrame:NSMakeRect(150, 47, 180, 30) pullsDown:NO];
+    self.carrierStylePopup = [[NSPopUpButton alloc] initWithFrame:NSMakeRect(150, 53, 180, 30) pullsDown:NO];
     [self.carrierStylePopup addItemsWithTitles:@[@"深色", @"浅色"]];
     [card addSubview:self.carrierStylePopup];
-    [card addSubview:[self ym_labelWithFrame:NSMakeRect(26, 28, 456, 18)
-                                        text:@"手动设置搭配微信的风格"
+    [card addSubview:[self ym_labelWithFrame:NSMakeRect(26, 34, 456, 18)
+                                        text:@"深色更沉稳，浅色更通透；会自动匹配内部承载层强度。"
                                         font:[NSFont systemFontOfSize:11 weight:NSFontWeightRegular]
                                        color:[NSColor colorWithCalibratedWhite:0.62 alpha:1.0]]];
 
-    self.keepAliveCheckbox = [[NSButton alloc] initWithFrame:NSMakeRect(26, 4, 260, 24)];
+    self.keepAliveCheckbox = [[NSButton alloc] initWithFrame:NSMakeRect(26, 8, 260, 24)];
     self.keepAliveCheckbox.buttonType = NSSwitchButton;
     self.keepAliveCheckbox.title = @"窗口重建后自动保持效果";
     self.keepAliveCheckbox.font = [NSFont systemFontOfSize:12 weight:NSFontWeightRegular];
@@ -242,6 +256,7 @@
     NSUserDefaults *defaults = [NSUserDefaults standardUserDefaults];
 
     self.enableBlurCheckbox.state = [defaults boolForKey:kThemeMistyWindowBlurEnabled] ? NSControlStateValueOn : NSControlStateValueOff;
+    self.colorfulCheckbox.state = [defaults boolForKey:kThemeMistyColorful] ? NSControlStateValueOn : NSControlStateValueOff;
     self.alphaSlider.doubleValue = [defaults doubleForKey:kThemeMistyQNSAlpha];
     self.blurRadiusSlider.integerValue = [defaults integerForKey:kThemeMistyWindowBlurRadius];
     self.keepAliveCheckbox.state = [defaults boolForKey:kThemeMistyKeepAlive] ? NSControlStateValueOn : NSControlStateValueOff;
@@ -265,6 +280,7 @@
     [defaults setDouble:self.alphaSlider.doubleValue forKey:kThemeMistyQNSAlpha];
     [defaults setBool:(self.enableBlurCheckbox.state == NSControlStateValueOn) forKey:kThemeMistyWindowBlurEnabled];
     [defaults setInteger:self.blurRadiusSlider.integerValue forKey:kThemeMistyWindowBlurRadius];
+    [defaults setBool:(self.colorfulCheckbox.state == NSControlStateValueOn) forKey:kThemeMistyColorful];
     [defaults setBool:(self.keepAliveCheckbox.state == NSControlStateValueOn) forKey:kThemeMistyKeepAlive];
 
     NSString *carrierStyle = self.carrierStylePopup.indexOfSelectedItem == 1 ? kThemeMistyCarrierStyleLight : kThemeMistyCarrierStyleDark;

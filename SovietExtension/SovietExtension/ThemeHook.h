@@ -8,7 +8,8 @@
 #import <Foundation/Foundation.h>
 
 NS_ASSUME_NONNULL_BEGIN
-
+BOOL YMColorfulBlurBackgroundEnabled(void);
+BOOL YMCarrierStyleIsDark(void);
 @interface ThemeHook : NSObject
 /// 启动背景图功能
 + (void)start;

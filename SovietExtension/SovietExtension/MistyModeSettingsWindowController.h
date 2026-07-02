@@ -18,6 +18,7 @@ static NSString *kThemeMistyCarrierStyle = @"kThemeMistyCarrierStyle1.SOVIET";
 static NSString *kThemeMistyCarrierStyleDark = @"dark";
 static NSString *kThemeMistyCarrierStyleLight = @"light";
 static NSString *kThemeMistyKeepAlive = @"kThemeMistyKeepAlive1.SOVIET";
+static NSString *kThemeMistyColorful = @"kThemeMistyColorful.SOVIET";
 
 /// 迷离模式设置窗口。
 /// MenuManager 只负责打开这个窗口，具体 UI、读写配置、立即应用效果都在这里处理。
