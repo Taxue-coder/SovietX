@@ -24,6 +24,9 @@
 ---
 
 ## Effect / 效果展示
+> 自定义**殺馬特**效果速度、大小、强度。
+
+> 🔞→嗳丄了祢℡ωǒ…吥徻↘後悔∵╭→很嗳﹎∩ 答应 ↘永逺┈⊕┈与∩ì.在∟┅ ↑起❤️
 <p align="center">
   <img src="./colorful.gif" width="1000" alt="SovietExtension Effect 1" />
 </p>
