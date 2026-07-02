@@ -23,8 +23,6 @@ static const BOOL kYMDefaultMistyModeEnabled = NO;
 static const CGFloat kYMDefaultQNSViewAlphaValue = 0.90f;
 static const BOOL kYMDefaultWindowBackgroundBlurEnabled = YES;
 static const int kYMDefaultWindowBackgroundBlurRadius = 10;
-static const BOOL kYMDefaultBlurKeepAliveEnabled = YES;
-static NSString * const kYMDefaultCarrierStyle = @"dark";
 
 //手动调试出来这个效果
 static const CGFloat kYMCarrierAlphaDark = 0.30f;
@@ -91,8 +89,6 @@ static void YMRegisterMistyThemeDefaults(void) {
         kThemeMistyColorfulOpacity: @(kYMDefaultColorfulOpacity),
         kThemeMistyColorfulBlurRadius: @(kYMDefaultColorfulInternalBlurRadius),
         kThemeMistyColorfulAnimationDuration: @(kYMDefaultColorfulAnimationDuration),
-        kThemeMistyCarrierStyle: kYMDefaultCarrierStyle,
-        kThemeMistyKeepAlive: @(kYMDefaultBlurKeepAliveEnabled),
     }];
 }
 
@@ -118,14 +114,6 @@ static NSInteger YMIntegerSetting(NSString *key, NSInteger defaultValue) {
         return defaultValue;
     }
     return [defaults integerForKey:key];
-}
-
-static NSString *YMStringSetting(NSString *key, NSString *defaultValue) {
-    NSString *value = [[NSUserDefaults standardUserDefaults] stringForKey:key];
-    if (value.length == 0) {
-        return defaultValue;
-    }
-    return value;
 }
 
 static BOOL YMMistyModeEnabled(void) {
@@ -158,12 +146,45 @@ static int YMWindowBackgroundBlurRadius(void) {
 }
 
 static BOOL YMBlurKeepAliveEnabled(void) {
-    return YMBoolSetting(kThemeMistyKeepAlive, kYMDefaultBlurKeepAliveEnabled);
+    // 不再把“自动保持”暴露给用户。内部始终保持开启，
+    // 用于微信 / Qt 重建窗口或切换深浅外观后自动重新应用迷离效果。
+    return YES;
+}
+
+static BOOL YMIsAppearanceDark(NSAppearance *appearance) {
+    if (!appearance) {
+        appearance = NSApp.effectiveAppearance ?: NSAppearance.currentAppearance;
+    }
+
+    NSString *bestMatch = [appearance bestMatchFromAppearancesWithNames:@[
+        NSAppearanceNameAqua,
+        NSAppearanceNameDarkAqua
+    ]];
+
+    return [bestMatch isEqualToString:NSAppearanceNameDarkAqua];
 }
 
 BOOL YMCarrierStyleIsDark(void) {
-    NSString *style = YMStringSetting(kThemeMistyCarrierStyle, kYMDefaultCarrierStyle);
-    return ![style isEqualToString:kThemeMistyCarrierStyleLight];
+    // 自动跟随当前微信 / AppKit 的有效外观，不再依赖手动“深色 / 浅色”配置。
+    if (![NSThread isMainThread]) {
+        __block BOOL dark = YES;
+        dispatch_sync(dispatch_get_main_queue(), ^{
+            dark = YMCarrierStyleIsDark();
+        });
+        return dark;
+    }
+
+    NSWindow *keyWindow = NSApp.keyWindow;
+    if (keyWindow) {
+        return YMIsAppearanceDark(keyWindow.effectiveAppearance);
+    }
+
+    NSWindow *mainWindow = NSApp.mainWindow;
+    if (mainWindow) {
+        return YMIsAppearanceDark(mainWindow.effectiveAppearance);
+    }
+
+    return YMIsAppearanceDark(NSApp.effectiveAppearance);
 }
 
 static CGFloat YMWindowBlurCarrierAlpha(void) {

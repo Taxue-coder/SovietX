@@ -12,6 +12,24 @@
 
 static const CGFloat kYMColorfulBlurRadiusMinValue = 40.0f;
 static const CGFloat kYMColorfulBlurRadiusMaxValue = 160.0f;
+static const NSInteger kYMMistySettingsLabelRoleTitle = 9101;
+static const NSInteger kYMMistySettingsLabelRolePrimary = 9102;
+static const NSInteger kYMMistySettingsLabelRoleValue = 9103;
+static const NSInteger kYMMistySettingsLabelRoleSubtitle = 9104;
+static const NSInteger kYMMistySettingsLabelRoleSecondary = 9105;
+
+/// 设置窗口外观直接跟随当前微信 / AppKit 的有效外观。
+/// 不再暴露“深色 / 浅色”手动选择，避免用户误解。
+static BOOL YMMistySettingsUseLightAppearanceFromCurrentAppearance(void) {
+    NSAppearance *appearance = NSApp.effectiveAppearance ?: NSAppearance.currentAppearance;
+    NSString *bestMatch = [appearance bestMatchFromAppearancesWithNames:@[
+        NSAppearanceNameAqua,
+        NSAppearanceNameDarkAqua
+    ]];
+
+    return ![bestMatch isEqualToString:NSAppearanceNameDarkAqua];
+}
+
 
 @interface MistyModeSettingsWindowController ()
 @property (nonatomic, strong) NSSlider *alphaSlider;
@@ -26,8 +44,10 @@ static const CGFloat kYMColorfulBlurRadiusMaxValue = 160.0f;
 @property (nonatomic, strong) NSTextField *colorfulBlurRadiusValueLabel;
 @property (nonatomic, strong) NSSlider *colorfulAnimationDurationSlider;
 @property (nonatomic, strong) NSTextField *colorfulAnimationDurationValueLabel;
-@property (nonatomic, strong) NSPopUpButton *carrierStylePopup;
-@property (nonatomic, strong) NSButton *keepAliveCheckbox;
+@property (nonatomic, strong) NSView *rootContentView;
+@property (nonatomic, strong) NSVisualEffectView *backgroundEffectView;
+@property (nonatomic, strong) NSView *colorfulCard;
+@property (nonatomic, strong) NSView *basicCard;
 @end
 
 @implementation MistyModeSettingsWindowController
@@ -45,8 +65,6 @@ static const CGFloat kYMColorfulBlurRadiusMaxValue = 160.0f;
         kThemeMistyColorfulOpacity: @(0.42),
         kThemeMistyColorfulBlurRadius: @(70.0),
         kThemeMistyColorfulAnimationDuration: @(10.0),
-        kThemeMistyCarrierStyle: kThemeMistyCarrierStyleDark,
-        kThemeMistyKeepAlive: @(YES),
     }];
 }
 
@@ -76,12 +94,14 @@ static const CGFloat kYMColorfulBlurRadiusMaxValue = 160.0f;
     panel.releasedWhenClosed = NO;
     panel.movableByWindowBackground = YES;
     panel.level = NSFloatingWindowLevel;
-    panel.backgroundColor = [NSColor colorWithCalibratedWhite:0.08 alpha:0.96];
+    BOOL light = YMMistySettingsUseLightAppearanceFromCurrentAppearance();
+    panel.appearance = [NSAppearance appearanceNamed:(light ? NSAppearanceNameAqua : NSAppearanceNameDarkAqua)];
+    panel.backgroundColor = light ? [NSColor colorWithCalibratedWhite:0.96 alpha:0.98] : [NSColor colorWithCalibratedWhite:0.08 alpha:0.96];
     panel.opaque = NO;
 
     NSView *contentView = [[NSView alloc] initWithFrame:frame];
     contentView.wantsLayer = YES;
-    contentView.layer.backgroundColor = [NSColor colorWithCalibratedWhite:0.06 alpha:0.96].CGColor;
+    contentView.layer.backgroundColor = (light ? [NSColor colorWithCalibratedWhite:0.94 alpha:0.98] : [NSColor colorWithCalibratedWhite:0.06 alpha:0.96]).CGColor;
     panel.contentView = contentView;
 
     return panel;
@@ -106,11 +126,14 @@ static const CGFloat kYMColorfulBlurRadiusMaxValue = 160.0f;
 
 - (void)ym_buildInterfaceInView:(NSView *)contentView
 {
+    self.rootContentView = contentView;
+
     NSVisualEffectView *effect = [[NSVisualEffectView alloc] initWithFrame:contentView.bounds];
     effect.autoresizingMask = NSViewWidthSizable | NSViewHeightSizable;
     effect.blendingMode = NSVisualEffectBlendingModeWithinWindow;
     effect.material = NSVisualEffectMaterialUnderWindowBackground;
     effect.state = NSVisualEffectStateActive;
+    self.backgroundEffectView = effect;
     [contentView addSubview:effect];
 
     NSTextField *titleLabel = [self ym_labelWithFrame:NSMakeRect(32, 704, 300, 28)
@@ -120,12 +143,13 @@ static const CGFloat kYMColorfulBlurRadiusMaxValue = 160.0f;
     [contentView addSubview:titleLabel];
 
     NSTextField *subtitleLabel = [self ym_labelWithFrame:NSMakeRect(32, 676, 460, 20)
-                                                   text:@"调节透明、模糊与流光氛围，保存后即时生效"
+                                                   text:@"调节透明、模糊与流光氛围，自动跟随微信深浅外观"
                                                    font:[NSFont systemFontOfSize:12 weight:NSFontWeightRegular]
                                                   color:[NSColor colorWithCalibratedWhite:0.72 alpha:1.0]];
     [contentView addSubview:subtitleLabel];
 
-    NSView *colorfulCard = [self ym_cardViewWithFrame:NSMakeRect(24, 394, 512, 252)];
+    self.colorfulCard = [self ym_cardViewWithFrame:NSMakeRect(24, 394, 512, 252)];
+    NSView *colorfulCard = self.colorfulCard;
     [contentView addSubview:colorfulCard];
 
     self.colorfulCheckbox = [[NSButton alloc] initWithFrame:NSMakeRect(26, 208, 220, 24)];
@@ -198,7 +222,8 @@ static const CGFloat kYMColorfulBlurRadiusMaxValue = 160.0f;
     self.colorfulAnimationDurationSlider.action = @selector(colorfulSliderChanged:);
     [colorfulCard addSubview:self.colorfulAnimationDurationSlider];
 
-    NSView *basicCard = [self ym_cardViewWithFrame:NSMakeRect(24, 86, 512, 288)];
+    self.basicCard = [self ym_cardViewWithFrame:NSMakeRect(24, 86, 512, 288)];
+    NSView *basicCard = self.basicCard;
     [contentView addSubview:basicCard];
 
     self.enableBlurCheckbox = [[NSButton alloc] initWithFrame:NSMakeRect(26, 244, 220, 24)];
@@ -256,25 +281,7 @@ static const CGFloat kYMColorfulBlurRadiusMaxValue = 160.0f;
                                             text:@"控制真实桌面背景的虚化程度；推荐 10，过高会丢失背景细节。"
                                             font:[NSFont systemFontOfSize:11 weight:NSFontWeightRegular]
                                            color:[NSColor colorWithCalibratedWhite:0.62 alpha:1.0]]];
-
-    [basicCard addSubview:[self ym_labelWithFrame:NSMakeRect(26, 28, 120, 22)
-                                            text:@"承载风格"
-                                            font:[NSFont systemFontOfSize:13 weight:NSFontWeightMedium]
-                                           color:[NSColor colorWithCalibratedWhite:0.92 alpha:1.0]]];
-    self.carrierStylePopup = [[NSPopUpButton alloc] initWithFrame:NSMakeRect(150, 23, 180, 30) pullsDown:NO];
-    [self.carrierStylePopup addItemsWithTitles:@[@"深色", @"浅色"]];
-    self.carrierStylePopup.target = self;
-    self.carrierStylePopup.action = @selector(liveThemeControlChanged:);
-    [basicCard addSubview:self.carrierStylePopup];
-
-    self.keepAliveCheckbox = [[NSButton alloc] initWithFrame:NSMakeRect(330, 27, 160, 24)];
-    self.keepAliveCheckbox.buttonType = NSSwitchButton;
-    self.keepAliveCheckbox.title = @"自动保持";
-    self.keepAliveCheckbox.font = [NSFont systemFontOfSize:12 weight:NSFontWeightRegular];
-    self.keepAliveCheckbox.target = self;
-    self.keepAliveCheckbox.action = @selector(liveThemeControlChanged:);
-    [basicCard addSubview:self.keepAliveCheckbox];
-
+    
     NSButton *cancelButton = [[NSButton alloc] initWithFrame:NSMakeRect(326, 28, 88, 34)];
     cancelButton.title = @"关闭主题";
     cancelButton.bezelStyle = NSBezelStyleRounded;
@@ -289,6 +296,8 @@ static const CGFloat kYMColorfulBlurRadiusMaxValue = 160.0f;
     confirmButton.target = self;
     confirmButton.action = @selector(confirmMistySettings:);
     [contentView addSubview:confirmButton];
+
+    [self ym_applyAdaptiveAppearance];
 }
 
 - (NSView *)ym_cardViewWithFrame:(NSRect)frame
@@ -298,8 +307,9 @@ static const CGFloat kYMColorfulBlurRadiusMaxValue = 160.0f;
     view.layer.cornerRadius = 18.0;
     view.layer.masksToBounds = YES;
     view.layer.borderWidth = 1.0;
-    view.layer.borderColor = [NSColor colorWithCalibratedWhite:1.0 alpha:0.10].CGColor;
-    view.layer.backgroundColor = [NSColor colorWithCalibratedWhite:0.12 alpha:0.78].CGColor;
+    BOOL light = [self ym_shouldUseLightAppearance];
+    view.layer.borderColor = [self ym_cardBorderColorForLight:light].CGColor;
+    view.layer.backgroundColor = [self ym_cardBackgroundColorForLight:light].CGColor;
     return view;
 }
 
@@ -311,13 +321,131 @@ static const CGFloat kYMColorfulBlurRadiusMaxValue = 160.0f;
     NSTextField *label = [[NSTextField alloc] initWithFrame:frame];
     label.stringValue = text ?: @"";
     label.font = font;
-    label.textColor = color;
+    label.tag = [self ym_labelRoleForReferenceColor:color];
+    label.textColor = [self ym_labelColorForRole:label.tag light:[self ym_shouldUseLightAppearance]];
     label.bezeled = NO;
     label.drawsBackground = NO;
     label.editable = NO;
     label.selectable = NO;
     label.lineBreakMode = NSLineBreakByTruncatingTail;
     return label;
+}
+
+#pragma mark - Adaptive Appearance
+
+- (BOOL)ym_shouldUseLightAppearance
+{
+    return YMMistySettingsUseLightAppearanceFromCurrentAppearance();
+}
+
+- (NSColor *)ym_windowBackgroundColorForLight:(BOOL)light
+{
+    return light ? [NSColor colorWithCalibratedWhite:0.96 alpha:0.98] : [NSColor colorWithCalibratedWhite:0.08 alpha:0.96];
+}
+
+- (NSColor *)ym_contentBackgroundColorForLight:(BOOL)light
+{
+    return light ? [NSColor colorWithCalibratedWhite:0.94 alpha:0.98] : [NSColor colorWithCalibratedWhite:0.06 alpha:0.96];
+}
+
+- (NSColor *)ym_cardBackgroundColorForLight:(BOOL)light
+{
+    return light ? [NSColor colorWithCalibratedWhite:1.00 alpha:0.82] : [NSColor colorWithCalibratedWhite:0.12 alpha:0.78];
+}
+
+- (NSColor *)ym_cardBorderColorForLight:(BOOL)light
+{
+    return light ? [NSColor colorWithCalibratedWhite:0.0 alpha:0.08] : [NSColor colorWithCalibratedWhite:1.0 alpha:0.10];
+}
+
+- (NSInteger)ym_labelRoleForReferenceColor:(NSColor *)color
+{
+    NSColor *rgbColor = [color colorUsingColorSpace:[NSColorSpace genericRGBColorSpace]] ?: color;
+    CGFloat r = 0.0, g = 0.0, b = 0.0, a = 0.0;
+    [rgbColor getRed:&r green:&g blue:&b alpha:&a];
+    CGFloat brightness = (r + g + b) / 3.0;
+
+    if (brightness >= 0.95) {
+        return kYMMistySettingsLabelRoleTitle;
+    }
+    if (brightness >= 0.88) {
+        return kYMMistySettingsLabelRolePrimary;
+    }
+    if (brightness >= 0.80) {
+        return kYMMistySettingsLabelRoleValue;
+    }
+    if (brightness >= 0.68) {
+        return kYMMistySettingsLabelRoleSubtitle;
+    }
+    return kYMMistySettingsLabelRoleSecondary;
+}
+
+- (NSColor *)ym_labelColorForRole:(NSInteger)role light:(BOOL)light
+{
+    if (light) {
+        switch (role) {
+            case kYMMistySettingsLabelRoleTitle:
+                return [NSColor colorWithCalibratedWhite:0.08 alpha:1.0];
+            case kYMMistySettingsLabelRolePrimary:
+                return [NSColor colorWithCalibratedWhite:0.16 alpha:1.0];
+            case kYMMistySettingsLabelRoleValue:
+                return [NSColor colorWithCalibratedWhite:0.24 alpha:1.0];
+            case kYMMistySettingsLabelRoleSubtitle:
+                return [NSColor colorWithCalibratedWhite:0.46 alpha:1.0];
+            case kYMMistySettingsLabelRoleSecondary:
+            default:
+                return [NSColor colorWithCalibratedWhite:0.52 alpha:1.0];
+        }
+    }
+
+    switch (role) {
+        case kYMMistySettingsLabelRoleTitle:
+            return [NSColor colorWithCalibratedWhite:0.98 alpha:1.0];
+        case kYMMistySettingsLabelRolePrimary:
+            return [NSColor colorWithCalibratedWhite:0.92 alpha:1.0];
+        case kYMMistySettingsLabelRoleValue:
+            return [NSColor colorWithCalibratedWhite:0.86 alpha:1.0];
+        case kYMMistySettingsLabelRoleSubtitle:
+            return [NSColor colorWithCalibratedWhite:0.72 alpha:1.0];
+        case kYMMistySettingsLabelRoleSecondary:
+        default:
+            return [NSColor colorWithCalibratedWhite:0.62 alpha:1.0];
+    }
+}
+
+- (void)ym_applyLabelColorsInView:(NSView *)view light:(BOOL)light
+{
+    for (NSView *subview in view.subviews) {
+        if ([subview isKindOfClass:[NSTextField class]]) {
+            NSTextField *label = (NSTextField *)subview;
+            if (label.tag >= kYMMistySettingsLabelRoleTitle &&
+                label.tag <= kYMMistySettingsLabelRoleSecondary) {
+                label.textColor = [self ym_labelColorForRole:label.tag light:light];
+            }
+        }
+        [self ym_applyLabelColorsInView:subview light:light];
+    }
+}
+
+- (void)ym_applyAdaptiveAppearance
+{
+    BOOL light = [self ym_shouldUseLightAppearance];
+
+    self.window.appearance = [NSAppearance appearanceNamed:(light ? NSAppearanceNameAqua : NSAppearanceNameDarkAqua)];
+    self.window.backgroundColor = [self ym_windowBackgroundColorForLight:light];
+
+    self.rootContentView.layer.backgroundColor = [self ym_contentBackgroundColorForLight:light].CGColor;
+
+    NSArray<NSView *> *cards = @[self.colorfulCard ?: [NSView new], self.basicCard ?: [NSView new]];
+    for (NSView *card in cards) {
+        if (!card.superview) {
+            continue;
+        }
+        card.layer.backgroundColor = [self ym_cardBackgroundColorForLight:light].CGColor;
+        card.layer.borderColor = [self ym_cardBorderColorForLight:light].CGColor;
+    }
+
+    [self ym_applyLabelColorsInView:self.rootContentView light:light];
 }
 
 #pragma mark - Settings
@@ -337,16 +465,9 @@ static const CGFloat kYMColorfulBlurRadiusMaxValue = 160.0f;
     colorfulBlurRadius = MAX(kYMColorfulBlurRadiusMinValue, MIN(kYMColorfulBlurRadiusMaxValue, colorfulBlurRadius));
     self.colorfulBlurRadiusSlider.doubleValue = colorfulBlurRadius;
     self.colorfulAnimationDurationSlider.doubleValue = [defaults doubleForKey:kThemeMistyColorfulAnimationDuration];
-    self.keepAliveCheckbox.state = [defaults boolForKey:kThemeMistyKeepAlive] ? NSControlStateValueOn : NSControlStateValueOff;
-
-    NSString *carrierStyle = [defaults stringForKey:kThemeMistyCarrierStyle];
-    if ([carrierStyle isEqualToString:kThemeMistyCarrierStyleLight]) {
-        [self.carrierStylePopup selectItemAtIndex:1];
-    } else {
-        [self.carrierStylePopup selectItemAtIndex:0];
-    }
 
     [self updateValueLabels];
+    [self ym_applyAdaptiveAppearance];
 }
 
 - (void)saveSettings:(BOOL)isOpen
@@ -363,10 +484,6 @@ static const CGFloat kYMColorfulBlurRadiusMaxValue = 160.0f;
     CGFloat colorfulBlurRadius = MAX(kYMColorfulBlurRadiusMinValue, MIN(kYMColorfulBlurRadiusMaxValue, self.colorfulBlurRadiusSlider.doubleValue));
     [defaults setDouble:colorfulBlurRadius forKey:kThemeMistyColorfulBlurRadius];
     [defaults setDouble:self.colorfulAnimationDurationSlider.doubleValue forKey:kThemeMistyColorfulAnimationDuration];
-    [defaults setBool:(self.keepAliveCheckbox.state == NSControlStateValueOn) forKey:kThemeMistyKeepAlive];
-
-    NSString *carrierStyle = self.carrierStylePopup.indexOfSelectedItem == 1 ? kThemeMistyCarrierStyleLight : kThemeMistyCarrierStyleDark;
-    [defaults setObject:carrierStyle forKey:kThemeMistyCarrierStyle];
     [defaults synchronize];
 }
 
@@ -438,6 +555,7 @@ static const CGFloat kYMColorfulBlurRadiusMaxValue = 160.0f;
 {
     (void)sender;
     [self updateValueLabels];
+    [self ym_applyAdaptiveAppearance];
     [self saveOpenSettingsAndApplyImmediately];
 }
 
