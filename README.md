@@ -34,7 +34,7 @@
 </p>
 
 <p align="center">
-  <img src="./2.1.png" width="600" alt="SovietExtension Effect 3" />
+  <img src="./2.2.png" width="600" alt="SovietExtension Effect 3" />
 </p>
 
 <p align="center">
