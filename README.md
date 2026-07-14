@@ -127,10 +127,10 @@
   <img src="https://img.shields.io/badge/link-996.icu-red.svg" />
 </a>
 <p align="center">
-  <img src="./3.1.png" width="900" alt="SovietExtension Banner" />
+  <img src="./3.1.png" width="900" alt="SovietX Banner (Original)" />
 </p>
 
-<h1 align="center">SovietExtension 苏维埃助手</h1>
+<h1 align="center">SovietExtension 苏维埃助手（原版 README 归档）</h1>
 
 <p align="center">
   For 开源共产主义，For 理想主义。<br/>
@@ -219,31 +219,31 @@
 进入 `Rely` 文件夹，执行 `install.sh`：
 
 ```bash
-cd SovietExtension/Rely
+cd SovietX/Rely
 sh install.sh
 ```
 
 或者直接执行完整路径：
 
 ```bash
-sh /Users/mustangym/SovietExtension/SovietExtension/Rely/install.sh
+sh /Users/<your_user>/SovietX/Rely/install.sh
 ```
 
 安装过程示例：
 
 ```text
-mustangym@macdeMacBook-Pro Rely % sh /Users/mustangym/SovietExtension/SovietExtension/Rely/install.sh
+<your_user>@MacBook-Pro Rely % sh install.sh
 
 ==============================
- Install SovietExtension
+ Install SovietX
 ==============================
 
 APP_PATH=/Applications/WeChat.app
-PLUGIN_SRC_PATH=/Users/mustangym/SovietExtension/SovietExtension/Rely/Plugin/SovietExtension.framework
-FRAMEWORK_DST_PATH=/Applications/WeChat.app/Contents/MacOS/SovietExtension.framework
-INSERT_DYLIB_PATH=/Users/mustangym/SovietExtension/SovietExtension/Rely/insert_dylib
-SUPPORTED_FILE=/Users/mustangym/SovietExtension/SovietExtension/Rely/supported_versions.txt
-LOAD_DYLIB_PATH=@executable_path/SovietExtension.framework/SovietExtension
+PLUGIN_SRC_PATH=/Users/<your_user>/SovietX/Rely/Plugin/SovietX.framework
+FRAMEWORK_DST_PATH=/Applications/WeChat.app/Contents/MacOS/SovietX.framework
+INSERT_DYLIB_PATH=/Users/<your_user>/SovietX/Rely/insert_dylib
+SUPPORTED_FILE=/Users/<your_user>/SovietX/Rely/supported_versions.txt
+LOAD_DYLIB_PATH=@executable_path/SovietX.framework/SovietX
 
 👉 [INFO] Detected WeChat version / 检测到微信版本:
     CFBundleShortVersionString: 4.1.9
@@ -259,8 +259,8 @@ LOAD_DYLIB_PATH=@executable_path/SovietExtension.framework/SovietExtension
 ⚠️  [WARN] Code signature verification failed, but app may still run for debugging / 签名验证未完全通过，但调试运行不一定受影响
 
 ==============================
-✅ SovietExtension installed successfully
-✅ SovietExtension 安装完成
+✅ SovietX installed successfully
+✅ SovietX 安装完成
 ==============================
 
 Run WeChat and watch log / 启动微信并查看日志：
@@ -269,7 +269,7 @@ Run WeChat and watch log / 启动微信并查看日志：
   tail -f /tmp/YMWeChatAntiRevokePatch.log
 
 Uninstall / 卸载：
-  /Users/mustangym/SovietExtension/SovietExtension/Rely/uninstall.sh
+  /Users/<your_user>/SovietX/Rely/uninstall.sh
 ```
 
 ---
@@ -334,7 +334,7 @@ defaults read /Applications/WeChat.app/Contents/Info.plist CFBundleVersion
 可以先执行卸载脚本恢复：
 
 ```bash
-sh /Users/mustangym/SovietExtension/SovietExtension/Rely/uninstall.sh
+sh /Users/<your_user>/SovietX/Rely/uninstall.sh
 ```
 
 如果仍然打不开，可以删除微信后重新安装官方版本。
@@ -352,7 +352,7 @@ sh uninstall.sh
 或者直接执行完整路径：
 
 ```bash
-sh /Users/mustangym/SovietExtension/SovietExtension/Rely/uninstall.sh
+sh /Users/<your_user>/SovietX/Rely/uninstall.sh
 ```
 
 ---
