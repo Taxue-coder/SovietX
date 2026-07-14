@@ -149,6 +149,11 @@ void InitWindowsUI() {
     SetUI(&g_windowsUI);
 }
 
+// 工厂函数
+PlatformUI* CreateWindowsUI() {
+    return new WindowsUI();
+}
+
 } // namespace soviet
 
 #endif // _WIN32

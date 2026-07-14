@@ -176,6 +176,11 @@ void InitWindowsProcess() {
     SetProcess(&g_windowsProcess);
 }
 
+// 工厂函数
+PlatformProcess* CreateWindowsProcess() {
+    return new WindowsProcess();
+}
+
 } // namespace soviet
 
 #endif // _WIN32

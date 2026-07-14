@@ -121,6 +121,11 @@ void InitWindowsHook() {
     SetHook(&g_windowsHook);
 }
 
+// 工厂函数
+PlatformHook* CreateWindowsHook() {
+    return new WindowsHook();
+}
+
 } // namespace soviet
 
 #endif // _WIN32

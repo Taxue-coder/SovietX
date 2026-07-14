@@ -13,7 +13,7 @@
 cmake_minimum_required(VERSION 3.20)
 project(SovietExtension
     VERSION 1.2.0
-    LANGUAGES CXX
+    LANGUAGES C CXX
     DESCRIPTION "WeChat plugin for macOS and Windows"
 )
 
@@ -136,6 +136,9 @@ elseif(WIN32)
         /utf-8
     )
 
+    # DLL 导出定义
+    set(CMAKE_SHARED_LINKER_FLAGS "${CMAKE_SHARED_LINKER_FLAGS} /DEF:${CMAKE_CURRENT_SOURCE_DIR}/platform/windows/SovietExtension.def")
+
     # Windows 系统库
     target_link_libraries(SovietExtension
         user32
@@ -147,25 +150,8 @@ elseif(WIN32)
     )
 
     # ---- MinHook 第三方库 ----
-    # 如果有 MinHook 源码或已安装，取消注释以下行
-    # 
-    # 方式1：add_subdirectory
-    #   add_subdirectory(third_party/minhook)
-    #   target_link_libraries(SovietExtension minhook)
-    #
-    # 方式2：直接包含源文件
-    #   set(MINHOOK_DIR ${CMAKE_CURRENT_SOURCE_DIR}/third_party/minhook)
-    #   target_sources(SovietExtension PRIVATE
-    #       ${MINHOOK_DIR}/src/hook.c
-    #       ${MINHOOK_DIR}/src/buffer.c
-    #       ${MINHOOK_DIR}/src/trampoline.c
-    #       ${MINHOOK_DIR}/src/hde/hde64.c
-    #   )
-    #   target_include_directories(SovietExtension PRIVATE ${MINHOOK_DIR}/include)
-    #
-    # 方式3：使用预编译库
-    #   find_library(MINHOOK_LIB minhook PATHS ${CMAKE_CURRENT_SOURCE_DIR}/third_party/minhook/lib)
-    #   target_link_libraries(SovietExtension ${MINHOOK_LIB})
+    add_subdirectory(third_party/minhook)
+    target_link_libraries(SovietExtension minhook)
 
     # ---- DLL 注入器（独立工具）----
     add_executable(SovietInjector

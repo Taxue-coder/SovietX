@@ -144,6 +144,11 @@ void InitWindowsConfig() {
     SetConfig(&g_windowsConfig);
 }
 
+// 工厂函数
+PlatformConfig* CreateWindowsConfig() {
+    return new WindowsConfig();
+}
+
 } // namespace soviet
 
 #endif // _WIN32

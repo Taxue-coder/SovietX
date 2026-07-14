@@ -131,6 +131,11 @@ void InitWindowsMemory() {
     SetMemory(&g_windowsMemory);
 }
 
+// 工厂函数
+PlatformMemory* CreateWindowsMemory() {
+    return new WindowsMemory();
+}
+
 } // namespace soviet
 
 #endif // _WIN32
