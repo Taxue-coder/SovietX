@@ -1,6 +1,6 @@
 /**
  * @file win_main.cpp
- * @brief SovietExtension Windows DLL 入口点 (DllMain)
+ * @brief SovietX Windows DLL 入口点 (DllMain)
  * 
  * 当 DLL 通过注入器加载到微信进程时，DllMain 被调用。
  * 在这里初始化所有模块。
@@ -46,7 +46,7 @@ extern PlatformUI* CreateWindowsUI();
 static unsigned __stdcall InitThread(void* param) {
     using namespace soviet;
 
-    Log("=== SovietExtension v%s (Windows) ===", kVersionString);
+    Log("=== SovietX v%s (Windows) ===", kVersionString);
     Log("DLL loaded into process %lu", GetCurrentProcessId());
 
     // 1. 初始化配置系统
@@ -95,7 +95,7 @@ static unsigned __stdcall InitThread(void* param) {
     ApplyMistyThemeToAllWindows();
     Log("Theme module initialized");
 
-    Log("=== SovietExtension fully initialized ===");
+    Log("=== SovietX fully initialized ===");
     return 0;
 }
 
@@ -116,7 +116,7 @@ BOOL APIENTRY DllMain(HMODULE hModule, DWORD reason, LPVOID reserved) {
             {
                 char tempPath[MAX_PATH];
                 GetTempPathA(MAX_PATH, tempPath);
-                std::string logPath = std::string(tempPath) + "SovietExtension.log";
+                std::string logPath = std::string(tempPath) + "SovietX.log";
                 soviet::LogInit(logPath);
             }
 
@@ -166,7 +166,7 @@ BOOL APIENTRY DllMain(HMODULE hModule, DWORD reason, LPVOID reserved) {
                 soviet::SetUI(nullptr);
             }
 
-            soviet::Log("=== SovietExtension unloaded ===");
+            soviet::Log("=== SovietX unloaded ===");
             break;
         }
     }

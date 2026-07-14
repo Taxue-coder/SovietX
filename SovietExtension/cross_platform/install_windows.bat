@@ -2,10 +2,10 @@
 chcp 65001 >nul 2>&1
 setlocal enabledelayedexpansion
 
-title SovietExtension Installer for Windows
+title SovietX Installer for Windows
 
 echo ============================================================
-echo   SovietExtension Windows 安装脚本
+echo   SovietX Windows 安装脚本
 echo ============================================================
 echo.
 
@@ -28,11 +28,11 @@ echo.
 :: 检查必要文件
 :: ============================================================
 set "SCRIPT_DIR=%~dp0"
-set "DLL_PATH=%SCRIPT_DIR%SovietExtension.dll"
+set "DLL_PATH=%SCRIPT_DIR%SovietX.dll"
 set "INJECTOR_PATH=%SCRIPT_DIR%SovietInjector.exe"
 
 if not exist "%DLL_PATH%" (
-    echo [错误] 未找到 SovietExtension.dll
+    echo [错误] 未找到 SovietX.dll
     echo 请确保 DLL 文件与此脚本在同一目录
     echo 路径: %DLL_PATH%
     pause
@@ -46,7 +46,7 @@ if not exist "%INJECTOR_PATH%" (
     exit /b 1
 )
 
-echo [√] SovietExtension.dll 已找到
+echo [√] SovietX.dll 已找到
 echo [√] SovietInjector.exe 已找到
 echo.
 

@@ -9,11 +9,11 @@ fi
 set -euo pipefail
 
 # ==============================
-# SovietExtension uninstaller
+# SovietX uninstaller
 # ==============================
 
 APP_NAME="WeChat"
-FRAMEWORK_NAME="${FRAMEWORK_NAME:-SovietExtension}"
+FRAMEWORK_NAME="${FRAMEWORK_NAME:-SovietX}"
 APP_PATH="/Applications/${APP_NAME}.app"
 FORCE=0
 REMOVE_BACKUP=0
@@ -51,7 +51,7 @@ Options:
   --force              Allow restoring from non-current backup / 允许使用非当前版本备份恢复
   --remove-backup      Remove backup files after uninstall / 卸载后删除备份
   --app=PATH           Specify WeChat.app path / 指定 WeChat.app 路径
-  --framework=NAME     Specify framework name, default: SovietExtension / 指定插件名，默认 SovietExtension
+  --framework=NAME     Specify framework name, default: SovietX / 指定插件名，默认 SovietX
   -h, --help           Show help / 显示帮助
 
 EOF

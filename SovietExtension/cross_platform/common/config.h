@@ -1,6 +1,6 @@
 /**
  * @file config.h
- * @brief SovietExtension 统一配置管理接口
+ * @brief SovietX 统一配置管理接口
  * 
  * 抽象配置读写接口，平台层提供具体实现：
  * - macOS: NSUserDefaults 封装

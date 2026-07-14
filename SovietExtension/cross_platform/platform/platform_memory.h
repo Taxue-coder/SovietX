@@ -1,6 +1,6 @@
 /**
  * @file platform_memory.h
- * @brief SovietExtension 平台内存操作抽象接口
+ * @brief SovietX 平台内存操作抽象接口
  * 
  * 封装进程内安全内存读写和内存保护修改。
  * - macOS: vm_read_overwrite / vm_protect / sys_icache_invalidate

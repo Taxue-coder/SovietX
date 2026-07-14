@@ -9,11 +9,11 @@ fi
 set -euo pipefail
 
 # ==============================
-# SovietExtension installer
+# SovietX installer
 # ==============================
 
 APP_NAME="WeChat"
-FRAMEWORK_NAME="${FRAMEWORK_NAME:-SovietExtension}"
+FRAMEWORK_NAME="${FRAMEWORK_NAME:-SovietX}"
 APP_PATH="/Applications/${APP_NAME}.app"
 FORCE=0
 RUN_SUDO=0
@@ -63,7 +63,7 @@ Usage:
 Options:
   --force              Ignore version check and install anyway / 忽略版本检查，强制安装
   --app=PATH           Specify WeChat.app path / 指定 WeChat.app 路径
-  --framework=NAME     Specify framework name, default: SovietExtension / 指定插件名，默认 SovietExtension
+  --framework=NAME     Specify framework name, default: SovietX / 指定插件名，默认 SovietX
   --insert-dylib=PATH  Specify insert_dylib path / 指定 insert_dylib 路径
   -h, --help           Show help / 显示帮助
 

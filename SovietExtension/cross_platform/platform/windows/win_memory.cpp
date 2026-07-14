@@ -1,6 +1,6 @@
 /**
  * @file win_memory.cpp
- * @brief SovietExtension Windows 内存操作实现
+ * @brief SovietX Windows 内存操作实现
  * 
  * 基于 Win32 API 实现进程内内存读写。
  * ASLR slide 通过 WeChatWin.dll 的实际加载地址计算。

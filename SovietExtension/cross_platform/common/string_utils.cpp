@@ -1,6 +1,6 @@
 /**
  * @file string_utils.cpp
- * @brief SovietExtension 字符串工具函数实现
+ * @brief SovietX 字符串工具函数实现
  * 
  * 从 ForwardToSelfPatch.mm 提取并改写为纯 C++ 实现。
  */

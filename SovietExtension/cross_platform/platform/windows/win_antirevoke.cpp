@@ -1,6 +1,6 @@
 /**
  * @file win_antirevoke.cpp
- * @brief SovietExtension Windows 防撤回 + 多开 + 退群监控实现
+ * @brief SovietX Windows 防撤回 + 多开 + 退群监控实现
  * 
  * ★ 此文件为框架代码，具体 VM 地址和偏移量需要：
  *    1. 使用 IDA Pro / Ghidra 逆向 Windows 版微信

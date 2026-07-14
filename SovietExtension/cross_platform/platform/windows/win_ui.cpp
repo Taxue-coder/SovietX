@@ -1,6 +1,6 @@
 /**
  * @file win_ui.cpp
- * @brief SovietExtension Windows UI 实现
+ * @brief SovietX Windows UI 实现
  * 
  * 使用 Win32 API 创建系统托盘图标和右键菜单。
  */
@@ -51,7 +51,7 @@ public:
         nid.uFlags = NIF_ICON | NIF_MESSAGE | NIF_TIP;
         nid.uCallbackMessage = WM_TRAYICON;
         nid.hIcon = LoadIcon(NULL, IDI_APPLICATION);
-        strncpy(nid.szTip, "SovietExtension", sizeof(nid.szTip) - 1);
+        strncpy(nid.szTip, "SovietX", sizeof(nid.szTip) - 1);
         Shell_NotifyIconA(NIM_ADD, &nid);
 
         Log("Tray icon created");
@@ -69,7 +69,7 @@ public:
     void ShowSettingsWindow() override {
         // TODO: 创建设置对话框
         MessageBoxA(NULL, "Settings window not yet implemented.",
-                     "SovietExtension", MB_OK | MB_ICONINFORMATION);
+                     "SovietX", MB_OK | MB_ICONINFORMATION);
     }
 
     void UpdateMenuItemState(const std::string& key, MenuItemState state) override {

@@ -1,6 +1,6 @@
 /**
  * @file config.cpp
- * @brief SovietExtension 统一配置管理实现
+ * @brief SovietX 统一配置管理实现
  */
 
 #include "config.h"

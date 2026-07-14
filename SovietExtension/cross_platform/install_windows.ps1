@@ -1,5 +1,5 @@
 # ============================================================
-# SovietExtension Windows 安装脚本 (PowerShell)
+# SovietX Windows 安装脚本 (PowerShell)
 # ============================================================
 #
 # 用法（管理员权限）：
@@ -28,13 +28,13 @@ $ErrorActionPreference = "Stop"
 # ============================================================
 
 $ScriptDir = Split-Path -Parent $MyInvocation.MyCommand.Definition
-$DllPath = Join-Path $ScriptDir "SovietExtension.dll"
+$DllPath = Join-Path $ScriptDir "SovietX.dll"
 $InjectorPath = Join-Path $ScriptDir "SovietInjector.exe"
-$ConfigDir = Join-Path $env:APPDATA "SovietExtension"
+$ConfigDir = Join-Path $env:APPDATA "SovietX"
 
 Write-Host ""
 Write-Host "============================================================" -ForegroundColor Cyan
-Write-Host "  SovietExtension Windows 安装工具" -ForegroundColor Cyan
+Write-Host "  SovietX Windows 安装工具" -ForegroundColor Cyan
 Write-Host "============================================================" -ForegroundColor Cyan
 Write-Host ""
 
@@ -170,11 +170,11 @@ Write-Ok "管理员权限确认"
 
 # 检查必要文件
 if (-not (Test-Path $DllPath)) {
-    Write-Err "未找到 SovietExtension.dll"
+    Write-Err "未找到 SovietX.dll"
     Write-Host "  期望路径: $DllPath"
     exit 1
 }
-Write-Ok "SovietExtension.dll 已找到"
+Write-Ok "SovietX.dll 已找到"
 
 if (-not (Test-Path $InjectorPath)) {
     Write-Err "未找到 SovietInjector.exe"

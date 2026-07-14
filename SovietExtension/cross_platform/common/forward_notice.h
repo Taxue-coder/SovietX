@@ -1,6 +1,6 @@
 /**
  * @file forward_notice.h
- * @brief SovietExtension 撤回消息转发通知文本构建
+ * @brief SovietX 撤回消息转发通知文本构建
  * 
  * 从 ForwardToSelfPatch.mm 中提取的跨平台转发逻辑。
  * 纯 C++ 实现，不依赖 NSString / ObjC。

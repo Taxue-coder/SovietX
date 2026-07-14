@@ -1,6 +1,6 @@
 /**
  * @file forward_notice.cpp
- * @brief SovietExtension 撤回消息转发通知文本构建实现
+ * @brief SovietX 撤回消息转发通知文本构建实现
  */
 
 #include "forward_notice.h"

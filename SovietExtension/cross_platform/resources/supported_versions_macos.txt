@@ -1,6 +1,6 @@
-# SovietExtension supported Mac WeChat versions
+# SovietX supported Mac WeChat versions
 # 此文件为原始 supported_versions.txt 的副本/引用
-# 原始文件位于: SovietExtension/Rely/supported_versions.txt
+# 原始文件位于: SovietX/Rely/supported_versions.txt
 #
 # 格式：DisplayVersion|CFBundleShortVersionString|CFBundleVersion|Note
 #

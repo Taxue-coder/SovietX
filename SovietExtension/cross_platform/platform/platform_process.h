@@ -1,6 +1,6 @@
 /**
  * @file platform_process.h
- * @brief SovietExtension 平台进程管理抽象接口
+ * @brief SovietX 平台进程管理抽象接口
  * 
  * 封装进程启动、终止、互斥体等进程级操作。
  * - macOS: NSTask / killall / open -n

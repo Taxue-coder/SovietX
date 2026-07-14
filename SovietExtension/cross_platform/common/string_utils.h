@@ -1,6 +1,6 @@
 /**
  * @file string_utils.h
- * @brief SovietExtension 字符串工具函数
+ * @brief SovietX 字符串工具函数
  * 
  * 从 ForwardToSelfPatch.mm 中提取的跨平台字符串校验逻辑。
  * 纯 C++ 实现，不依赖 NSString / ObjC。

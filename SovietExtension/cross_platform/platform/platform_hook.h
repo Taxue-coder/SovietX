@@ -1,6 +1,6 @@
 /**
  * @file platform_hook.h
- * @brief SovietExtension 平台 Hook 抽象接口
+ * @brief SovietX 平台 Hook 抽象接口
  * 
  * 封装 inline hook / 方法替换等平台相关操作。
  * - macOS: ObjC Runtime method_setImplementation + Mach-O inline patch

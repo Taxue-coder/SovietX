@@ -1,6 +1,6 @@
 /**
  * @file win_hook.cpp
- * @brief SovietExtension Windows Hook 实现
+ * @brief SovietX Windows Hook 实现
  * 
  * 基于 MinHook 实现 inline hook。
  * x64 跳转使用 14 字节 JMP：FF 25 00 00 00 00 + 8字节绝对地址。

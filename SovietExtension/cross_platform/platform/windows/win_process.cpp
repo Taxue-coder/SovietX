@@ -1,6 +1,6 @@
 /**
  * @file win_process.cpp
- * @brief SovietExtension Windows 进程管理实现
+ * @brief SovietX Windows 进程管理实现
  */
 
 #ifdef _WIN32

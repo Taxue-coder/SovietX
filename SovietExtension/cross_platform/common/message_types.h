@@ -1,6 +1,6 @@
 /**
  * @file message_types.h
- * @brief SovietExtension 微信消息类型常量和 MessageWrap 布局定义
+ * @brief SovietX 微信消息类型常量和 MessageWrap 布局定义
  * 
  * 从 RevokePatch.mm 中提取的跨平台公共数据结构。
  * 不同平台的偏移量由 version_profile.h 中的配置管理。

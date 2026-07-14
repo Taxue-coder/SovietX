@@ -1,6 +1,6 @@
 /**
  * @file revoke_parser.cpp
- * @brief SovietExtension 撤回消息解析实现
+ * @brief SovietX 撤回消息解析实现
  */
 
 #include "revoke_parser.h"

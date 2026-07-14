@@ -1,8 +1,8 @@
 /**
  * @file win_config.cpp
- * @brief SovietExtension Windows 配置持久化实现
+ * @brief SovietX Windows 配置持久化实现
  * 
- * 使用 JSON 文件存储在 %APPDATA%/SovietExtension/config.json。
+ * 使用 JSON 文件存储在 %APPDATA%/SovietX/config.json。
  * 简单实现，不依赖第三方 JSON 库。
  */
 
@@ -28,10 +28,10 @@ namespace soviet {
 class WindowsConfig : public PlatformConfig {
 public:
     WindowsConfig() {
-        // 配置文件路径：%APPDATA%/SovietExtension/config.ini
+        // 配置文件路径：%APPDATA%/SovietX/config.ini
         char appdata[MAX_PATH];
         if (SUCCEEDED(SHGetFolderPathA(NULL, CSIDL_APPDATA, NULL, 0, appdata))) {
-            std::string dir = std::string(appdata) + "\\SovietExtension";
+            std::string dir = std::string(appdata) + "\\SovietX";
             CreateDirectoryA(dir.c_str(), NULL);
             m_filePath = dir + "\\config.ini";
         } else {
@@ -97,7 +97,7 @@ public:
             Log("Failed to save config to %s", m_filePath.c_str());
             return;
         }
-        out << "# SovietExtension Windows Config\n";
+        out << "# SovietX Windows Config\n";
         for (const auto& kv : m_data) {
             out << kv.first << "=" << kv.second << "\n";
         }

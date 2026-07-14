@@ -1,6 +1,6 @@
 /**
  * @file re_helper.cpp
- * @brief SovietExtension 逆向工程辅助工具
+ * @brief SovietX 逆向工程辅助工具
  * 
  * 此工具用于辅助逆向 Windows 版微信，提取关键信息：
  *   1. PE 头信息（ImageBase、Section 布局）
@@ -375,7 +375,7 @@ static void ListExports(const char* filePath) {
 // ============================================================
 
 int main(int argc, char* argv[]) {
-    printf("SovietExtension Reverse Engineering Helper\n");
+    printf("SovietX Reverse Engineering Helper\n");
     printf("==========================================\n\n");
 
     if (argc < 2) {

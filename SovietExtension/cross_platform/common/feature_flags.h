@@ -1,6 +1,6 @@
 /**
  * @file feature_flags.h
- * @brief SovietExtension 功能开关定义
+ * @brief SovietX 功能开关定义
  * 
  * 跨平台公共头文件，定义所有功能模块的开关键名和默认值。
  * 平台层通过 PlatformConfig 接口读写这些开关。

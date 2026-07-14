@@ -1,5 +1,5 @@
 # ============================================================
-# SovietExtension - Windows WeChat 支持版本列表
+# SovietX - Windows WeChat 支持版本列表
 # ============================================================
 # 
 # 格式：short_version | build_version | display_name

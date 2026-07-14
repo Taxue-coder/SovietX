@@ -1,6 +1,6 @@
 /**
  * @file log.cpp
- * @brief SovietExtension 统一日志系统实现
+ * @brief SovietX 统一日志系统实现
  */
 
 #include "log.h"

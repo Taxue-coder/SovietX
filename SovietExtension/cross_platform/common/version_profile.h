@@ -1,6 +1,6 @@
 /**
  * @file version_profile.h
- * @brief SovietExtension 微信版本适配配置结构体
+ * @brief SovietX 微信版本适配配置结构体
  * 
  * 每个微信版本对应一组 VM 地址和参数偏移。
  * 平台层在插件加载时匹配当前版本，选择对应的 Profile。

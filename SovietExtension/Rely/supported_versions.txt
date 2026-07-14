@@ -1,5 +1,5 @@
-# SovietExtension supported WeChat versions
-# SovietExtension 支持的 Mac WeChat 版本列表
+# SovietX supported WeChat versions
+# SovietX 支持的 Mac WeChat 版本列表
 #
 # Format / 格式：
 # DisplayVersion|CFBundleShortVersionString|CFBundleVersion|Note

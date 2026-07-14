@@ -1,8 +1,8 @@
 /**
  * @file injector.cpp
- * @brief SovietExtension Windows DLL 注入器
+ * @brief SovietX Windows DLL 注入器
  * 
- * 使用 CreateRemoteThread + LoadLibraryA 将 SovietExtension.dll 注入到微信进程。
+ * 使用 CreateRemoteThread + LoadLibraryA 将 SovietX.dll 注入到微信进程。
  * 
  * 用法：
  *   SovietInjector.exe [WeChat_PID]
@@ -26,7 +26,7 @@
 // 常量
 // ============================================================
 
-static const char* kDllName = "SovietExtension.dll";
+static const char* kDllName = "SovietX.dll";
 
 // ============================================================
 // 工具函数
@@ -236,7 +236,7 @@ static bool InjectDLL(DWORD pid, const std::string& dllPath) {
 // ============================================================
 
 static void PrintUsage(const char* exe) {
-    printf("SovietExtension DLL Injector for Windows\n");
+    printf("SovietX DLL Injector for Windows\n");
     printf("=========================================\n\n");
     printf("Usage:\n");
     printf("  %s <PID>           Inject into specific process\n", exe);
@@ -287,7 +287,7 @@ static int InjectAllInstances() {
 }
 
 int main(int argc, char* argv[]) {
-    printf("SovietExtension Injector v1.0\n");
+    printf("SovietX Injector v1.0\n");
     printf("============================\n\n");
 
     if (argc < 2) {

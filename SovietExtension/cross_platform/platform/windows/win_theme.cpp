@@ -1,6 +1,6 @@
 /**
  * @file win_theme.cpp
- * @brief SovietExtension Windows 主题模糊效果实现
+ * @brief SovietX Windows 主题模糊效果实现
  * 
  * 使用 DWM API 和 SetWindowCompositionAttribute 实现窗口模糊/透明。
  * Win10: Acrylic Blur / DWM Blur Behind

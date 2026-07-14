@@ -1,6 +1,6 @@
 /**
  * @file log.h
- * @brief SovietExtension 统一日志系统
+ * @brief SovietX 统一日志系统
  * 
  * 跨平台日志接口。日志同时输出到系统控制台和文件。
  * - macOS: NSLog + /tmp/YMWeChatAntiRevokePatch.log

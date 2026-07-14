@@ -1,6 +1,6 @@
 /**
  * @file revoke_parser.h
- * @brief SovietExtension 撤回消息解析公共逻辑
+ * @brief SovietX 撤回消息解析公共逻辑
  * 
  * 从 RevokePatch.mm 中提取的跨平台撤回消息处理逻辑。
  * 负责从 MessageWrap 内存中读取撤回消息的关键字段。

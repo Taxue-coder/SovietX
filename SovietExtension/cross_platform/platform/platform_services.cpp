@@ -1,6 +1,6 @@
 /**
  * @file platform_services.cpp
- * @brief SovietExtension 平台服务全局实例管理
+ * @brief SovietX 平台服务全局实例管理
  * 
  * 统一管理所有平台服务的 getter/setter。
  * 平台层在插件加载时调用 SetXxx() 注入具体实现。

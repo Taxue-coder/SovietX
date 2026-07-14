@@ -1,6 +1,6 @@
 /**
  * @file win_autologin.cpp
- * @brief SovietExtension Windows 自动登录实现
+ * @brief SovietX Windows 自动登录实现
  * 
  * 使用 Win32 窗口查找 + SendInput 模拟点击登录按钮。
  */

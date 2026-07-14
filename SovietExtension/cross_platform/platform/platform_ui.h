@@ -1,6 +1,6 @@
 /**
  * @file platform_ui.h
- * @brief SovietExtension 平台 UI 抽象接口
+ * @brief SovietX 平台 UI 抽象接口
  * 
  * 封装菜单、设置窗口、提示对话框等 UI 操作。
  * - macOS: NSMenu / NSMenuItem / NSAlert
