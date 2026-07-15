@@ -1,0 +1,9 @@
+D:/CoderLife/CoderLife/C++/SovietX-main/SovietX/cross_platform/build-windows/CMakeFiles/SovietX.dir
+D:/CoderLife/CoderLife/C++/SovietX-main/SovietX/cross_platform/build-windows/CMakeFiles/SovietInjector.dir
+D:/CoderLife/CoderLife/C++/SovietX-main/SovietX/cross_platform/build-windows/CMakeFiles/SovietREHelper.dir
+D:/CoderLife/CoderLife/C++/SovietX-main/SovietX/cross_platform/build-windows/CMakeFiles/INSTALL.dir
+D:/CoderLife/CoderLife/C++/SovietX-main/SovietX/cross_platform/build-windows/CMakeFiles/ALL_BUILD.dir
+D:/CoderLife/CoderLife/C++/SovietX-main/SovietX/cross_platform/build-windows/CMakeFiles/ZERO_CHECK.dir
+D:/CoderLife/CoderLife/C++/SovietX-main/SovietX/cross_platform/build-windows/third_party/minhook/CMakeFiles/minhook.dir
+D:/CoderLife/CoderLife/C++/SovietX-main/SovietX/cross_platform/build-windows/third_party/minhook/CMakeFiles/INSTALL.dir
+D:/CoderLife/CoderLife/C++/SovietX-main/SovietX/cross_platform/build-windows/third_party/minhook/CMakeFiles/ALL_BUILD.dir

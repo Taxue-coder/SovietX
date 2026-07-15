@@ -1,0 +1,13 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Project ToolsVersion="16.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <ItemGroup>
+    <CustomBuild Include="D:\CoderLife\CoderLife\C++\SovietX-main\SovietX\cross_platform\build-windows-41124\CMakeFiles\f681c7305c8082c2e1809fa1f767c52d\generate.stamp.rule">
+      <Filter>CMake Rules</Filter>
+    </CustomBuild>
+  </ItemGroup>
+  <ItemGroup>
+    <Filter Include="CMake Rules">
+      <UniqueIdentifier>{41CB2419-6736-336F-9318-16493A6F6FED}</UniqueIdentifier>
+    </Filter>
+  </ItemGroup>
+</Project>

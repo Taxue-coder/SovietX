@@ -1,0 +1,25 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Project ToolsVersion="16.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <ItemGroup>
+    <ClCompile Include="D:\CoderLife\CoderLife\C++\SovietX-main\SovietX\cross_platform\third_party\minhook\src\buffer.c">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="D:\CoderLife\CoderLife\C++\SovietX-main\SovietX\cross_platform\third_party\minhook\src\hook.c">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="D:\CoderLife\CoderLife\C++\SovietX-main\SovietX\cross_platform\third_party\minhook\src\trampoline.c">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="D:\CoderLife\CoderLife\C++\SovietX-main\SovietX\cross_platform\third_party\minhook\src\hde\hde64.c">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+  </ItemGroup>
+  <ItemGroup>
+    <CustomBuild Include="D:\CoderLife\CoderLife\C++\SovietX-main\SovietX\cross_platform\third_party\minhook\CMakeLists.txt" />
+  </ItemGroup>
+  <ItemGroup>
+    <Filter Include="Source Files">
+      <UniqueIdentifier>{9D12B1DE-7A0C-3042-B6F8-78A93B2F7300}</UniqueIdentifier>
+    </Filter>
+  </ItemGroup>
+</Project>

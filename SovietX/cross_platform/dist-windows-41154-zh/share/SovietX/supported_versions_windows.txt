@@ -1,0 +1,66 @@
+# ============================================================
+# SovietX - Windows WeChat 支持版本列表
+# ============================================================
+# 
+# 格式：short_version | build_version | display_name
+# 
+# The source currently targets WeChat Windows x64 4.1.11.54 only. A version
+# entry is not considered supported until its PE fingerprint, hook entry bytes,
+# calling convention, and MessageWrap layout have all been verified.
+# 
+# 如何获取版本信息：
+#   1. 右键 Weixin.exe → 属性 → 详细信息
+#      - 文件版本 = short_version (如 3.9.11.25)
+#      - 产品版本 或 内部版本号 = build_version
+#   2. 或使用 GetFileVersionInfo API 读取
+#   3. 在 Weixin.dll 中搜索版本字符串确认
+#
+# 逆向工具推荐：
+#   - IDA Pro 7.x+ (商业) 或 Ghidra (免费, NSA 出品)
+#   - x64dbg (免费, 动态调试)
+#   - PE-bear / CFF Explorer (PE 头分析)
+# ============================================================
+
+# === Target under verification ===
+
+# 4.1.11.54 | * | WeChat Windows 4.1.11.54 x64 | verification pending
+#
+# This is intentionally commented out: no unverified address may enable a
+# runtime hook. See platform/windows/win_antirevoke.cpp for the fail-closed
+# profile guard.
+
+# 3.9.x 系列
+# 3.9.11.25 | * | WeChat Windows 3.9.11.25
+# 3.9.10.19 | * | WeChat Windows 3.9.10.19
+# 3.9.9.35  | * | WeChat Windows 3.9.9.35
+# 3.9.8.25  | * | WeChat Windows 3.9.8.25
+# 3.9.7.29  | * | WeChat Windows 3.9.7.29
+# 3.9.6.36  | * | WeChat Windows 3.9.6.36
+# 3.9.5.27  | * | WeChat Windows 3.9.5.27
+
+# 3.8.x 系列
+# 3.8.1.26  | * | WeChat Windows 3.8.1.26
+# 3.8.0.41  | * | WeChat Windows 3.8.0.41
+
+# ============================================================
+# 版本适配检查清单（每个新版本需要逆向的内容）：
+# ============================================================
+# 
+# □ hookPointerVA            - 撤回消息处理函数虚拟地址
+# □ rawMessageTemplateVA     - 原始消息模板地址
+# □ messageWrapFromRawVA     - 从 rawWrap 获取 MessageWrap
+# □ messageWrapDestructVA    - MessageWrap 析构函数
+# □ revokeDeleteMessagesVA   - 撤回删除消息函数
+# □ multiOpenPreventInstanceVA - 多开互斥检查
+# □ groupExitDBApplyVA       - 退群 DB 操作
+# □ openURLWebViewKindVA     - URL WebView 处理
+# □ sendMsgCGIVA             - 发送消息 CGI 函数
+# □ MessageWrap layout       - 消息包装结构体偏移量
+#   - contentOffset
+#   - messageTypeOffset
+#   - msgSourceOffset
+#   - remoteUserOrSessionOffset
+#   - selfUserOffset
+#   - createTimeMsOffset
+#   - createTimeSecOffset
+# ============================================================

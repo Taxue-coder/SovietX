@@ -1,0 +1,13 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Project ToolsVersion="16.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <ItemGroup>
+    <CustomBuild Include="D:\CoderLife\CoderLife\C++\SovietX-main\SovietX\cross_platform\build-windows-41154-antirevoke\CMakeFiles\fcc7bdaac97c8372d40c4c5f60606a3a\INSTALL_force.rule">
+      <Filter>CMake Rules</Filter>
+    </CustomBuild>
+  </ItemGroup>
+  <ItemGroup>
+    <Filter Include="CMake Rules">
+      <UniqueIdentifier>{06752018-E674-3C34-BFA5-10F1941A99D3}</UniqueIdentifier>
+    </Filter>
+  </ItemGroup>
+</Project>

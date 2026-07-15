@@ -1,0 +1,10 @@
+^D:\CODERLIFE\CODERLIFE\C++\SOVIETX-MAIN\SOVIETX\CROSS_PLATFORM\BUILD-WINDOWS-41154-ANTIREVOKE\CMAKEFILES\0ED5AB24A622F739814F8655E614EFAC\GENERATE.STAMP.RULE
+setlocal
+"C:\Program Files\CMake\bin\cmake.exe" -SD:/CoderLife/CoderLife/C++/SovietX-main/SovietX/cross_platform -BD:/CoderLife/CoderLife/C++/SovietX-main/SovietX/cross_platform/build-windows-41154-antirevoke --check-stamp-list CMakeFiles/generate.stamp.list --vs-solution-file D:/CoderLife/CoderLife/C++/SovietX-main/SovietX/cross_platform/build-windows-41154-antirevoke/SovietX.sln
+if %errorlevel% neq 0 goto :cmEnd
+:cmEnd
+endlocal & call :cmErrorLevel %errorlevel% & goto :cmDone
+:cmErrorLevel
+exit /b %1
+:cmDone
+if %errorlevel% neq 0 goto :VCEnd

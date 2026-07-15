@@ -1,0 +1,8 @@
+{
+	"InstallScripts" : 
+	[
+		"D:/CoderLife/CoderLife/C++/SovietX-main/SovietX/cross_platform/build-windows-41154-antirevoke/cmake_install.cmake",
+		"D:/CoderLife/CoderLife/C++/SovietX-main/SovietX/cross_platform/build-windows-41154-antirevoke/third_party/minhook/cmake_install.cmake"
+	],
+	"Parallel" : false
+}

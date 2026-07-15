@@ -1,0 +1,9 @@
+D:/CoderLife/CoderLife/C++/SovietX-main/SovietX/cross_platform/build-windows-41154-antirevoke/CMakeFiles/SovietX.dir
+D:/CoderLife/CoderLife/C++/SovietX-main/SovietX/cross_platform/build-windows-41154-antirevoke/CMakeFiles/SovietInjector.dir
+D:/CoderLife/CoderLife/C++/SovietX-main/SovietX/cross_platform/build-windows-41154-antirevoke/CMakeFiles/SovietREHelper.dir
+D:/CoderLife/CoderLife/C++/SovietX-main/SovietX/cross_platform/build-windows-41154-antirevoke/CMakeFiles/INSTALL.dir
+D:/CoderLife/CoderLife/C++/SovietX-main/SovietX/cross_platform/build-windows-41154-antirevoke/CMakeFiles/ALL_BUILD.dir
+D:/CoderLife/CoderLife/C++/SovietX-main/SovietX/cross_platform/build-windows-41154-antirevoke/CMakeFiles/ZERO_CHECK.dir
+D:/CoderLife/CoderLife/C++/SovietX-main/SovietX/cross_platform/build-windows-41154-antirevoke/third_party/minhook/CMakeFiles/minhook.dir
+D:/CoderLife/CoderLife/C++/SovietX-main/SovietX/cross_platform/build-windows-41154-antirevoke/third_party/minhook/CMakeFiles/INSTALL.dir
+D:/CoderLife/CoderLife/C++/SovietX-main/SovietX/cross_platform/build-windows-41154-antirevoke/third_party/minhook/CMakeFiles/ALL_BUILD.dir

@@ -1,0 +1,75 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Project ToolsVersion="16.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <ItemGroup>
+    <ClCompile Include="D:\CoderLife\CoderLife\C++\SovietX-main\SovietX\cross_platform\common\config.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="D:\CoderLife\CoderLife\C++\SovietX-main\SovietX\cross_platform\common\log.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="D:\CoderLife\CoderLife\C++\SovietX-main\SovietX\cross_platform\common\string_utils.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="D:\CoderLife\CoderLife\C++\SovietX-main\SovietX\cross_platform\common\forward_notice.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="D:\CoderLife\CoderLife\C++\SovietX-main\SovietX\cross_platform\common\revoke_parser.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="D:\CoderLife\CoderLife\C++\SovietX-main\SovietX\cross_platform\platform\platform_services.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="D:\CoderLife\CoderLife\C++\SovietX-main\SovietX\cross_platform\platform\windows\win_antirevoke.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="D:\CoderLife\CoderLife\C++\SovietX-main\SovietX\cross_platform\platform\windows\win_autologin.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="D:\CoderLife\CoderLife\C++\SovietX-main\SovietX\cross_platform\platform\windows\win_config.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="D:\CoderLife\CoderLife\C++\SovietX-main\SovietX\cross_platform\platform\windows\win_hook.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="D:\CoderLife\CoderLife\C++\SovietX-main\SovietX\cross_platform\platform\windows\win_main.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="D:\CoderLife\CoderLife\C++\SovietX-main\SovietX\cross_platform\platform\windows\win_memory.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="D:\CoderLife\CoderLife\C++\SovietX-main\SovietX\cross_platform\platform\windows\win_process.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="D:\CoderLife\CoderLife\C++\SovietX-main\SovietX\cross_platform\platform\windows\win_theme.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="D:\CoderLife\CoderLife\C++\SovietX-main\SovietX\cross_platform\platform\windows\win_ui.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+  </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="D:\CoderLife\CoderLife\C++\SovietX-main\SovietX\cross_platform\platform\platform_hook.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="D:\CoderLife\CoderLife\C++\SovietX-main\SovietX\cross_platform\platform\platform_memory.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="D:\CoderLife\CoderLife\C++\SovietX-main\SovietX\cross_platform\platform\platform_ui.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="D:\CoderLife\CoderLife\C++\SovietX-main\SovietX\cross_platform\platform\platform_process.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+  </ItemGroup>
+  <ItemGroup>
+    <CustomBuild Include="D:\CoderLife\CoderLife\C++\SovietX-main\SovietX\cross_platform\CMakeLists.txt" />
+  </ItemGroup>
+  <ItemGroup>
+    <Filter Include="Header Files">
+      <UniqueIdentifier>{B7DA42F5-E962-3ED7-87D5-97FB59324F15}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Source Files">
+      <UniqueIdentifier>{02AA64E1-2929-37EB-8BE8-2DD1FB823F98}</UniqueIdentifier>
+    </Filter>
+  </ItemGroup>
+</Project>

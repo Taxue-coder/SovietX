@@ -1,0 +1,13 @@
+D:\CoderLife\CoderLife\C++\SovietX-main\SovietX\cross_platform\dist-windows-41154-antirevoke/share/minhook/minhook-config.cmake
+D:\CoderLife\CoderLife\C++\SovietX-main\SovietX\cross_platform\dist-windows-41154-antirevoke/share/minhook/minhook-config-version.cmake
+D:\CoderLife\CoderLife\C++\SovietX-main\SovietX\cross_platform\dist-windows-41154-antirevoke/lib/minhook.x64.lib
+D:\CoderLife\CoderLife\C++\SovietX-main\SovietX\cross_platform\dist-windows-41154-antirevoke/share/minhook/minhook-targets.cmake
+D:\CoderLife\CoderLife\C++\SovietX-main\SovietX\cross_platform\dist-windows-41154-antirevoke/share/minhook/minhook-targets-release.cmake
+D:\CoderLife\CoderLife\C++\SovietX-main\SovietX\cross_platform\dist-windows-41154-antirevoke/include/MinHook.h
+D:\CoderLife\CoderLife\C++\SovietX-main\SovietX\cross_platform\dist-windows-41154-antirevoke/bin/SovietX.dll
+D:\CoderLife\CoderLife\C++\SovietX-main\SovietX\cross_platform\dist-windows-41154-antirevoke/bin/SovietInjector.exe
+D:\CoderLife\CoderLife\C++\SovietX-main\SovietX\cross_platform\dist-windows-41154-antirevoke/bin/SovietREHelper.exe
+D:\CoderLife\CoderLife\C++\SovietX-main\SovietX\cross_platform\dist-windows-41154-antirevoke/share/SovietX/supported_versions_windows.txt
+D:\CoderLife\CoderLife\C++\SovietX-main\SovietX\cross_platform\dist-windows-41154-antirevoke/bin/install_windows.ps1
+D:\CoderLife\CoderLife\C++\SovietX-main\SovietX\cross_platform\dist-windows-41154-antirevoke/bin/install_windows.bat
+D:\CoderLife\CoderLife\C++\SovietX-main\SovietX\cross_platform\dist-windows-41154-antirevoke/bin/auto_inject.vbs
