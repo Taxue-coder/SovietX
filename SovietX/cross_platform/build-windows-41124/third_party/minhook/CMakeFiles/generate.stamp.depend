@@ -1,6 +1,0 @@
-# CMake generation dependency list for this directory.
-C:/Program Files/CMake/share/cmake-4.4/Modules/BasicConfigVersion-AnyNewerVersion.cmake.in
-C:/Program Files/CMake/share/cmake-4.4/Modules/CMakePackageConfigHelpers.cmake
-C:/Program Files/CMake/share/cmake-4.4/Modules/WriteBasicConfigVersionFile.cmake
-D:/CoderLife/CoderLife/C++/SovietX-main/SovietX/cross_platform/third_party/minhook/CMakeLists.txt
-D:/CoderLife/CoderLife/C++/SovietX-main/SovietX/cross_platform/third_party/minhook/cmake/minhook-config.cmake.in

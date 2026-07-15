@@ -1,10 +1,2 @@
-.DS_Store
 .idea/
-*.xcuserstate
-xcuserdata/
 build/
-DerivedData/
-*.pbxuser
-*.mode1v3
-*.mode2v3
-*.perspectivev3

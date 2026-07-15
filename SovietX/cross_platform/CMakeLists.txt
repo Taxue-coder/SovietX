@@ -1,28 +1,23 @@
-# ============================================================
-# SovietX 跨平台构建系统
-# ============================================================
-# 
-# 构建方式：
-#   macOS:   cmake -B build -G Xcode && cmake --build build --config Release
-#   Windows: cmake -B build -G "Visual Studio 17 2022" -A x64 && cmake --build build --config Release
+# SovietX Windows build configuration.
 #
-# 输出：
-#   macOS:   build/libSovietX.dylib
-#   Windows: build/Release/SovietX.dll + build/Release/SovietInjector.exe
+# Build:
+#   cmake -S . -B build-windows -G "Visual Studio 17 2022" -A x64
+#   cmake --build build-windows --config Release
 
 cmake_minimum_required(VERSION 3.20)
+
+if(NOT WIN32)
+    message(FATAL_ERROR "SovietX supports Windows only.")
+endif()
+
 project(SovietX
     VERSION 1.2.0
     LANGUAGES C CXX
-    DESCRIPTION "WeChat plugin for macOS and Windows"
+    DESCRIPTION "WeChat plugin for Windows"
 )
 
 set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
-
-# ============================================================
-# 公共代码（跨平台）
-# ============================================================
 
 set(COMMON_SOURCES
     common/config.cpp
@@ -43,10 +38,6 @@ set(COMMON_HEADERS
     common/revoke_parser.h
 )
 
-# ============================================================
-# 平台抽象层头文件
-# ============================================================
-
 set(PLATFORM_HEADERS
     platform/platform_hook.h
     platform/platform_memory.h
@@ -58,198 +49,120 @@ set(PLATFORM_SOURCES
     platform/platform_services.cpp
 )
 
-# ============================================================
-# 平台相关构建
-# ============================================================
+message(STATUS "Building for Windows")
 
-if(APPLE)
-    # ---- macOS ----
-    message(STATUS "Building for macOS")
+file(GLOB PLATFORM_WIN_SOURCES platform/windows/*.cpp)
 
-    set(CMAKE_OSX_ARCHITECTURES "arm64;x86_64")
-    set(CMAKE_OSX_DEPLOYMENT_TARGET "11.0")
+add_library(SovietX SHARED
+    ${COMMON_SOURCES}
+    ${PLATFORM_SOURCES}
+    ${PLATFORM_WIN_SOURCES}
+    ${PLATFORM_HEADERS}
+)
 
-    # macOS 平台实现（Objective-C++）
-    file(GLOB PLATFORM_MACOS_SOURCES platform/macos/*.mm)
+target_include_directories(SovietX PRIVATE
+    ${CMAKE_CURRENT_SOURCE_DIR}/common
+    ${CMAKE_CURRENT_SOURCE_DIR}/platform
+    ${CMAKE_CURRENT_SOURCE_DIR}/platform/windows
+)
 
-    add_library(SovietX SHARED
-        ${COMMON_SOURCES}
-        ${PLATFORM_SOURCES}
-        ${PLATFORM_MACOS_SOURCES}
-        ${PLATFORM_HEADERS}
-    )
+target_compile_definitions(SovietX PRIVATE
+    _WIN32_WINNT=0x0A00
+    WIN32_LEAN_AND_MEAN
+    NOMINMAX
+    UNICODE
+    _UNICODE
+    _CRT_SECURE_NO_WARNINGS
+)
 
-    target_include_directories(SovietX PRIVATE
-        ${CMAKE_CURRENT_SOURCE_DIR}/common
-        ${CMAKE_CURRENT_SOURCE_DIR}/platform
-        ${CMAKE_CURRENT_SOURCE_DIR}/platform/macos
-    )
+target_compile_options(SovietX PRIVATE
+    /W3
+    /utf-8
+)
 
-    target_compile_options(SovietX PRIVATE
-        -fobjc-arc
-        -Wall
-        -Wextra
-        -Wno-unused-parameter
-    )
+target_link_options(SovietX PRIVATE
+    "/DEF:${CMAKE_CURRENT_SOURCE_DIR}/platform/windows/SovietX.def"
+)
 
-    # macOS 框架
-    target_link_libraries(SovietX
-        "-framework AppKit"
-        "-framework Cocoa"
-        "-framework Carbon"
-        "-framework ApplicationServices"
-        "-framework CoreServices"
-    )
+target_link_libraries(SovietX
+    user32
+    kernel32
+    advapi32
+    shell32
+    dwmapi
+    psapi
+    version
+)
 
-    # 设置输出名称
-    set_target_properties(SovietX PROPERTIES
-        OUTPUT_NAME "SovietX"
-        PREFIX "lib"
-        SUFFIX ".dylib"
-    )
+add_subdirectory(third_party/minhook)
+target_link_libraries(SovietX minhook)
 
-elseif(WIN32)
-    # ---- Windows ----
-    message(STATUS "Building for Windows")
+add_executable(SovietInjector
+    inject/windows/injector.cpp
+)
 
-    # Windows 平台实现
-    file(GLOB PLATFORM_WIN_SOURCES platform/windows/*.cpp)
+target_compile_definitions(SovietInjector PRIVATE
+    _WIN32_WINNT=0x0A00
+    WIN32_LEAN_AND_MEAN
+    UNICODE
+    _UNICODE
+    _CRT_SECURE_NO_WARNINGS
+)
 
-    add_library(SovietX SHARED
-        ${COMMON_SOURCES}
-        ${PLATFORM_SOURCES}
-        ${PLATFORM_WIN_SOURCES}
-        ${PLATFORM_HEADERS}
-    )
+target_compile_options(SovietInjector PRIVATE
+    /W3
+    /utf-8
+)
 
-    target_include_directories(SovietX PRIVATE
-        ${CMAKE_CURRENT_SOURCE_DIR}/common
-        ${CMAKE_CURRENT_SOURCE_DIR}/platform
-        ${CMAKE_CURRENT_SOURCE_DIR}/platform/windows
-    )
+set_target_properties(SovietInjector PROPERTIES
+    RUNTIME_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/$<CONFIG>"
+)
 
-    target_compile_definitions(SovietX PRIVATE
-        _WIN32_WINNT=0x0A00        # Windows 10+
-        WIN32_LEAN_AND_MEAN
-        NOMINMAX
-        UNICODE
-        _UNICODE
-        _CRT_SECURE_NO_WARNINGS
-    )
+add_executable(SovietREHelper
+    tools/re_helper.cpp
+)
 
-    target_compile_options(SovietX PRIVATE
-        /W3
-        /utf-8
-    )
+target_compile_definitions(SovietREHelper PRIVATE
+    _WIN32_WINNT=0x0A00
+    WIN32_LEAN_AND_MEAN
+    NOMINMAX
+    UNICODE
+    _UNICODE
+    _CRT_SECURE_NO_WARNINGS
+)
 
-    # DLL 导出定义
-    target_link_options(SovietX PRIVATE
-        "/DEF:${CMAKE_CURRENT_SOURCE_DIR}/platform/windows/SovietX.def"
-    )
+target_compile_options(SovietREHelper PRIVATE
+    /W3
+    /utf-8
+)
 
-    # Windows 系统库
-    target_link_libraries(SovietX
-        user32
-        kernel32
-        advapi32
-        shell32
-        dwmapi
-        psapi
-        version
-    )
+target_link_libraries(SovietREHelper PRIVATE
+    version
+)
 
-    # ---- MinHook 第三方库 ----
-    add_subdirectory(third_party/minhook)
-    target_link_libraries(SovietX minhook)
+set_target_properties(SovietREHelper PROPERTIES
+    RUNTIME_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/$<CONFIG>"
+)
 
-    # ---- DLL 注入器（独立工具）----
-    add_executable(SovietInjector
-        inject/windows/injector.cpp
-    )
+install(TARGETS SovietX SovietInjector SovietREHelper
+    RUNTIME DESTINATION bin
+    LIBRARY DESTINATION lib
+)
 
-    target_compile_definitions(SovietInjector PRIVATE
-        _WIN32_WINNT=0x0A00
-        WIN32_LEAN_AND_MEAN
-        UNICODE
-        _UNICODE
-        _CRT_SECURE_NO_WARNINGS
-    )
+install(FILES resources/supported_versions_windows.txt
+    DESTINATION share/SovietX
+    OPTIONAL
+)
 
-    target_compile_options(SovietInjector PRIVATE
-        /W3
-        /utf-8
-    )
+install(PROGRAMS
+    install_windows.ps1
+    install_windows.bat
+    DESTINATION bin
+)
 
-    # 输出到同一目录
-    set_target_properties(SovietInjector PROPERTIES
-        RUNTIME_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/$<CONFIG>"
-    )
-
-    # ---- 目标二进制诊断工具 ----
-    add_executable(SovietREHelper
-        tools/re_helper.cpp
-    )
-
-    target_compile_definitions(SovietREHelper PRIVATE
-        _WIN32_WINNT=0x0A00
-        WIN32_LEAN_AND_MEAN
-        NOMINMAX
-        UNICODE
-        _UNICODE
-        _CRT_SECURE_NO_WARNINGS
-    )
-
-    target_compile_options(SovietREHelper PRIVATE
-        /W3
-        /utf-8
-    )
-
-    target_link_libraries(SovietREHelper PRIVATE
-        version
-    )
-
-    set_target_properties(SovietREHelper PROPERTIES
-        RUNTIME_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/$<CONFIG>"
-    )
-
-else()
-    message(FATAL_ERROR "Unsupported platform. Only macOS (APPLE) and Windows (WIN32) are supported.")
-endif()
-
-# ============================================================
-# 资源文件安装
-# ============================================================
-
-if(APPLE)
-    install(TARGETS SovietX
-        LIBRARY DESTINATION lib
-    )
-    install(FILES resources/supported_versions_macos.txt
-        DESTINATION share/SovietX
-        OPTIONAL
-    )
-elseif(WIN32)
-    install(TARGETS SovietX SovietInjector SovietREHelper
-        RUNTIME DESTINATION bin
-        LIBRARY DESTINATION lib
-    )
-    install(FILES resources/supported_versions_windows.txt
-        DESTINATION share/SovietX
-        OPTIONAL
-    )
-    install(PROGRAMS
-        install_windows.ps1
-        install_windows.bat
-        DESTINATION bin
-    )
-    install(FILES auto_inject.vbs
-        DESTINATION bin
-    )
-endif()
-
-# ============================================================
-# 构建信息
-# ============================================================
+install(FILES auto_inject.vbs
+    DESTINATION bin
+)
 
 message(STATUS "SovietX v${PROJECT_VERSION}")
 message(STATUS "CMake ${CMAKE_VERSION}")
