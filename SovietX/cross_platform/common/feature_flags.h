@@ -74,13 +74,19 @@ constexpr const char* kMistyWindowBlurRadius = "misty.window_blur_radius";
 constexpr const char* kMistyColorfulOpacity = "misty.colorful_opacity";
 constexpr const char* kMistyColorfulBlurRadius = "misty.colorful_blur_radius";
 constexpr const char* kMistyColorfulAnimationDuration = "misty.colorful_animation_duration";
+constexpr const char* kMistyColorPrimary = "misty.color.primary";
+constexpr const char* kMistyColorSecondary = "misty.color.secondary";
+constexpr const char* kMistyColorAccent = "misty.color.accent";
 
 struct MistyDefaults {
     static constexpr double kQNSAlphaDefault = 0.90;
     static constexpr int kWindowBlurRadiusDefault = 10;
-    static constexpr double kColorfulOpacityDefault = 0.42;
+    static constexpr double kColorfulOpacityDefault = 0.18;
     static constexpr double kColorfulBlurRadiusDefault = 70.0;
     static constexpr double kColorfulAnimationDurationDefault = 10.0;
+    static constexpr int kColorPrimaryDefault = 0x00FFBE23;
+    static constexpr int kColorSecondaryDefault = 0x00FF46BE;
+    static constexpr int kColorAccentDefault = 0x003791FF;
 };
 
 } // namespace soviet

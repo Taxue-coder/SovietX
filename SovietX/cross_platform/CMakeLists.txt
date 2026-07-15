@@ -92,6 +92,8 @@ target_link_libraries(SovietX
     dwmapi
     psapi
     version
+    comctl32
+    comdlg32
 )
 
 add_subdirectory(third_party/minhook)

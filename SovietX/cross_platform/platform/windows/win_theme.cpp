@@ -12,6 +12,7 @@
 #include <windows.h>
 #include <dwmapi.h>
 
+#include <algorithm>
 #include <atomic>
 #include <cmath>
 #include <cstdint>
@@ -51,6 +52,42 @@ using SetWindowCompositionAttributeFn = BOOL(WINAPI*)(HWND, WINDOWCOMPOSITIONATT
 SetWindowCompositionAttributeFn g_setWindowCompositionAttribute = nullptr;
 constexpr wchar_t kOverlayClassName[] = L"SovietXFlowingOverlay";
 
+struct ThemeOptions {
+    int blurRadius = MistyDefaults::kWindowBlurRadiusDefault;
+    float opacity = static_cast<float>(MistyDefaults::kColorfulOpacityDefault);
+    float spread = static_cast<float>(MistyDefaults::kColorfulBlurRadiusDefault);
+    float animationDuration = static_cast<float>(MistyDefaults::kColorfulAnimationDurationDefault);
+    COLORREF colors[3] = {
+        static_cast<COLORREF>(MistyDefaults::kColorPrimaryDefault),
+        static_cast<COLORREF>(MistyDefaults::kColorSecondaryDefault),
+        static_cast<COLORREF>(MistyDefaults::kColorAccentDefault),
+    };
+};
+
+ThemeOptions ReadThemeOptions() {
+    ThemeOptions options;
+    PlatformConfig* config = GetConfig();
+    if (!config) return options;
+
+    options.blurRadius = std::clamp(
+        config->GetInt(kMistyWindowBlurRadius, options.blurRadius), 1, 30);
+    options.opacity = std::clamp(static_cast<float>(
+        config->GetDouble(kMistyColorfulOpacity, options.opacity)), 0.05f, 0.45f);
+    options.spread = std::clamp(static_cast<float>(
+        config->GetDouble(kMistyColorfulBlurRadius, options.spread)), 35.0f, 120.0f);
+    options.animationDuration = std::clamp(static_cast<float>(
+        config->GetDouble(kMistyColorfulAnimationDuration, options.animationDuration)), 4.0f, 30.0f);
+
+    const char* keys[] = {kMistyColorPrimary, kMistyColorSecondary, kMistyColorAccent};
+    for (int index = 0; index < 3; ++index) {
+        const int value = config->GetInt(keys[index], static_cast<int>(options.colors[index]));
+        if (value >= 0 && value <= 0x00FFFFFF) {
+            options.colors[index] = static_cast<COLORREF>(value);
+        }
+    }
+    return options;
+}
+
 void ResolveCompositionAttributeFunc() {
     if (g_setWindowCompositionAttribute) return;
 
@@ -69,6 +106,38 @@ bool IsHostWindow(HWND hwnd, DWORD processId) {
     wchar_t className[256] = {};
     GetClassNameW(hwnd, className, 256);
     return wcsstr(className, L"Qt") != nullptr;
+}
+
+bool ContainsQrLoginText(const wchar_t* text) {
+    return text && (wcsstr(text, L"\x626B\x7801\x767B\x5F55") != nullptr ||
+                    wcsstr(text, L"scan qr") != nullptr ||
+                    wcsstr(text, L"Scan QR") != nullptr ||
+                    wcsstr(text, L"\x4EC5\x4F20\x8F93\x6587\x4EF6") != nullptr);
+}
+
+bool IsQrLoginWindow(HWND hwnd) {
+    wchar_t title[256] = {};
+    GetWindowTextW(hwnd, title, 256);
+    if (ContainsQrLoginText(title)) return true;
+
+    bool hasQrLoginText = false;
+    EnumChildWindows(hwnd, [](HWND child, LPARAM value) -> BOOL {
+        auto* found = reinterpret_cast<bool*>(value);
+        wchar_t text[256] = {};
+        GetWindowTextW(child, text, 256);
+        if (ContainsQrLoginText(text)) {
+            *found = true;
+            return FALSE;
+        }
+        return TRUE;
+    }, reinterpret_cast<LPARAM>(&hasQrLoginText));
+    if (hasQrLoginText) return true;
+
+    RECT rect = {};
+    GetWindowRect(hwnd, &rect);
+    const int width = rect.right - rect.left;
+    const int height = rect.bottom - rect.top;
+    return width <= 720 && height <= 980 && height * 100 >= width * 116;
 }
 
 HWND FindMainWeChatWindow() {
@@ -116,6 +185,25 @@ void ApplyDwmBlur(HWND hwnd, int blurRadius) {
     accent.AccentFlags = 2;
     accent.GradientColor = 0x9A202030;
 
+    WINDOWCOMPOSITIONATTRIBDATA data = {};
+    data.Attribute = WCA_ACCENT_POLICY;
+    data.Data = &accent;
+    data.SizeOfData = sizeof(accent);
+    g_setWindowCompositionAttribute(hwnd, &data);
+}
+
+void ClearDwmBlur(HWND hwnd) {
+    if (!hwnd) return;
+
+    DWM_BLURBEHIND blurBehind = {};
+    blurBehind.dwFlags = DWM_BB_ENABLE;
+    DwmEnableBlurBehindWindow(hwnd, &blurBehind);
+
+    ResolveCompositionAttributeFunc();
+    if (!g_setWindowCompositionAttribute) return;
+
+    ACCENT_POLICY accent = {};
+    accent.AccentState = ACCENT_DISABLED;
     WINDOWCOMPOSITIONATTRIBDATA data = {};
     data.Attribute = WCA_ACCENT_POLICY;
     data.Data = &accent;
@@ -208,21 +296,19 @@ private:
         return true;
     }
 
-    void RenderFrame(double seconds) {
+    void RenderFrame(double seconds, const ThemeOptions& options) {
         const float width = static_cast<float>(m_width);
         const float height = static_cast<float>(m_height);
+        const float phase = static_cast<float>(seconds) * 10.0f / options.animationDuration;
+        const float blobRadius = 0.12f + options.spread / 550.0f;
+        const float radiusSquared = blobRadius * blobRadius;
         const float centers[][2] = {
-            {0.25f + 0.16f * std::sin(static_cast<float>(seconds * 0.55)),
-             0.30f + 0.12f * std::cos(static_cast<float>(seconds * 0.42))},
-            {0.68f + 0.14f * std::cos(static_cast<float>(seconds * 0.47)),
-             0.64f + 0.15f * std::sin(static_cast<float>(seconds * 0.38))},
-            {0.50f + 0.20f * std::sin(static_cast<float>(seconds * 0.31)),
-             0.20f + 0.10f * std::cos(static_cast<float>(seconds * 0.62))},
-        };
-        const uint8_t colors[][3] = {
-            {35, 190, 255},
-            {190, 70, 255},
-            {255, 145, 55},
+            {0.25f + 0.16f * std::sin(phase * 0.55f),
+             0.30f + 0.12f * std::cos(phase * 0.42f)},
+            {0.68f + 0.14f * std::cos(phase * 0.47f),
+             0.64f + 0.15f * std::sin(phase * 0.38f)},
+            {0.50f + 0.20f * std::sin(phase * 0.31f),
+             0.20f + 0.10f * std::cos(phase * 0.62f)},
         };
 
         for (int y = 0; y < m_height; ++y) {
@@ -237,16 +323,18 @@ private:
                 for (int index = 0; index < 3; ++index) {
                     const float dx = normalizedX - centers[index][0];
                     const float dy = normalizedY - centers[index][1];
-                    float strength = 1.0f - (dx * dx + dy * dy) / 0.28f;
+                    float strength = 1.0f - (dx * dx + dy * dy) / radiusSquared;
                     if (strength <= 0.0f) continue;
                     strength *= strength;
-                    red += colors[index][0] * strength;
-                    green += colors[index][1] * strength;
-                    blue += colors[index][2] * strength;
+                    red += GetRValue(options.colors[index]) * strength;
+                    green += GetGValue(options.colors[index]) * strength;
+                    blue += GetBValue(options.colors[index]) * strength;
                     energy += strength;
                 }
 
-                const uint8_t alpha = static_cast<uint8_t>(28.0f + (energy > 1.0f ? 1.0f : energy) * 42.0f);
+                const float normalizedEnergy = energy > 1.0f ? 1.0f : energy;
+                const uint8_t alpha = static_cast<uint8_t>(options.opacity * 255.0f *
+                                                            (0.45f + normalizedEnergy * 0.55f));
                 const uint8_t r = static_cast<uint8_t>(red > 255.0f ? 255.0f : red);
                 const uint8_t g = static_cast<uint8_t>(green > 255.0f ? 255.0f : green);
                 const uint8_t b = static_cast<uint8_t>(blue > 255.0f ? 255.0f : blue);
@@ -271,7 +359,7 @@ private:
             m_owner = host;
         }
 
-        RenderFrame(seconds);
+        RenderFrame(seconds, ReadThemeOptions());
         POINT destination{rect.left, rect.top};
         SIZE size{width, height};
         POINT source{0, 0};
@@ -292,9 +380,15 @@ private:
         const ULONGLONG start = GetTickCount64();
         while (m_running.load()) {
             HWND host = FindMainWeChatWindow();
-            if (host) {
+            if (host && !IsQrLoginWindow(host)) {
+                m_suppressedQrHost = nullptr;
                 Update(host, static_cast<double>(GetTickCount64() - start) / 1000.0);
             } else {
+                if (host && host != m_suppressedQrHost) {
+                    ClearDwmBlur(host);
+                    m_suppressedQrHost = host;
+                    Log("[Theme] QR login window detected; visual effects are disabled");
+                }
                 ShowWindow(m_window, SW_HIDE);
             }
             Sleep(50);
@@ -310,6 +404,7 @@ private:
     std::thread m_thread;
     HWND m_window = nullptr;
     HWND m_owner = nullptr;
+    HWND m_suppressedQrHost = nullptr;
     HDC m_dc = nullptr;
     HBITMAP m_bitmap = nullptr;
     HBITMAP m_previousBitmap = nullptr;
@@ -322,23 +417,33 @@ FlowingOverlay g_flowingOverlay;
 
 } // namespace
 
-void ApplyMistyThemeToAllWindows() {
+void RefreshWindowsTheme() {
     PlatformConfig* config = GetConfig();
     if (!config || !config->GetBool(kFeatureMistyMode, FeatureDefaults::kMistyModeDefault)) {
         g_flowingOverlay.Stop();
+        ClearDwmBlur(FindMainWeChatWindow());
         return;
     }
 
     HWND host = FindMainWeChatWindow();
-    if (host && config->GetBool(kFeatureMistyWindowBlur, FeatureDefaults::kMistyWindowBlurDefault)) {
-        ApplyDwmBlur(host, config->GetInt(kMistyWindowBlurRadius,
-                                          MistyDefaults::kWindowBlurRadiusDefault));
+    if (!host || IsQrLoginWindow(host)) {
+        g_flowingOverlay.Stop();
+        ClearDwmBlur(host);
+        Log("[Theme] QR login window detected; visual effects are disabled");
+        return;
     }
 
-    if (config->GetBool(kFeatureMistyColorful, FeatureDefaults::kMistyColorfulDefault)) {
-        g_flowingOverlay.Start();
-        Log("[Theme] Misty acrylic and flowing overlay enabled");
+    const ThemeOptions options = ReadThemeOptions();
+    if (config->GetBool(kFeatureMistyWindowBlur, FeatureDefaults::kMistyWindowBlurDefault)) {
+        ApplyDwmBlur(host, options.blurRadius);
     }
+
+    g_flowingOverlay.Start();
+    Log("[Theme] Misty acrylic and flowing overlay enabled");
+}
+
+void ApplyMistyThemeToAllWindows() {
+    RefreshWindowsTheme();
 }
 
 void InitWindowsTheme() {
