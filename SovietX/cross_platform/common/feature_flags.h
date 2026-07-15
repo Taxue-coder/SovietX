@@ -39,9 +39,6 @@ constexpr const char* kFeatureRevokeForwardToSelf = "feature.revoke_forward_to_s
 // 使用系统浏览器打开链接
 constexpr const char* kFeatureUseSystemBrowser = "feature.use_system_browser";
 
-// 自动登录
-constexpr const char* kFeatureAutoLogin = "feature.auto_login";
-
 // 迷离模式（主题模糊）
 constexpr const char* kFeatureMistyMode = "feature.misty_mode";
 
@@ -63,10 +60,9 @@ struct FeatureDefaults {
     static constexpr bool kGroupExitNicknameDefault = false;
     static constexpr bool kRevokeForwardToSelfDefault = false;
     static constexpr bool kUseSystemBrowserDefault = false;
-    static constexpr bool kAutoLoginDefault = false;
     static constexpr bool kMistyModeDefault = false;
     static constexpr bool kMistyWindowBlurDefault = true;
-    static constexpr bool kMistyColorfulDefault = false;
+    static constexpr bool kMistyColorfulDefault = true;
 };
 
 // ============================================================

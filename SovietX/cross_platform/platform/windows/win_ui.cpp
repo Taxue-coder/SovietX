@@ -29,11 +29,8 @@ constexpr UINT kTrayMessage = WM_APP + 1;
 constexpr UINT kTrayIconId = 1001;
 constexpr UINT kMenuAntiRevoke = 2001;
 constexpr UINT kMenuMultiOpen = 2002;
-constexpr UINT kMenuAutoLogin = 2003;
-constexpr UINT kMenuMistyMode = 2004;
+constexpr UINT kMenuMistyMode = 2003;
 constexpr UINT kMenuSettings = 2098;
-constexpr UINT kMenuRestart = 2099;
-constexpr UINT kMenuQuit = 2100;
 constexpr wchar_t kWindowClass[] = L"SovietXTrayWindow";
 
 } // namespace
@@ -74,11 +71,10 @@ public:
         wchar_t message[512] = {};
         swprintf_s(message,
                    L"SovietX 设置会保存到用户配置文件。\n\n"
-                   L"消息防撤回：%s\n微信多开：%s\n自动登录：%s\n迷离模式：%s\n\n"
+                   L"消息防撤回：%s\n微信多开：%s\n迷离模式：%s\n\n"
                    L"修改后需要停用并重新启动 SovietX 才会生效。",
                    config->GetBool(kFeatureAntiRevoke, FeatureDefaults::kAntiRevokeDefault) ? L"开启" : L"关闭",
                    config->GetBool(kFeatureMultiOpen, FeatureDefaults::kMultiOpenDefault) ? L"开启" : L"关闭",
-                   config->GetBool(kFeatureAutoLogin, FeatureDefaults::kAutoLoginDefault) ? L"开启" : L"关闭",
                    config->GetBool(kFeatureMistyMode, FeatureDefaults::kMistyModeDefault) ? L"开启" : L"关闭");
         MessageBoxW(m_hWnd, message, L"SovietX 设置状态", MB_OK | MB_ICONINFORMATION);
     }
@@ -211,14 +207,10 @@ private:
                               FeatureDefaults::kAntiRevokeDefault);
         AppendFeatureMenuItem(menu, kMenuMultiOpen, L"微信多开", kFeatureMultiOpen,
                               FeatureDefaults::kMultiOpenDefault);
-        AppendFeatureMenuItem(menu, kMenuAutoLogin, L"自动登录", kFeatureAutoLogin,
-                              FeatureDefaults::kAutoLoginDefault);
         AppendFeatureMenuItem(menu, kMenuMistyMode, L"迷离模式", kFeatureMistyMode,
                               FeatureDefaults::kMistyModeDefault);
         AppendMenuW(menu, MF_SEPARATOR, 0, nullptr);
         AppendMenuW(menu, MF_STRING, kMenuSettings, L"查看设置状态");
-        AppendMenuW(menu, MF_STRING, kMenuRestart, L"重启微信");
-        AppendMenuW(menu, MF_STRING, kMenuQuit, L"退出微信");
 
         POINT point = {};
         GetCursorPos(&point);
@@ -235,23 +227,11 @@ private:
             case kMenuMultiOpen:
                 ToggleFeature(kFeatureMultiOpen, FeatureDefaults::kMultiOpenDefault);
                 break;
-            case kMenuAutoLogin:
-                ToggleFeature(kFeatureAutoLogin, FeatureDefaults::kAutoLoginDefault);
-                break;
             case kMenuMistyMode:
                 ToggleFeature(kFeatureMistyMode, FeatureDefaults::kMistyModeDefault);
                 break;
             case kMenuSettings:
                 ShowSettingsWindow();
-                break;
-            case kMenuRestart:
-                if (GetProcess()) GetProcess()->RestartHostApp();
-                break;
-            case kMenuQuit:
-                if (GetProcess() &&
-                    MessageBoxW(m_hWnd, L"确定要退出微信吗？", L"SovietX", MB_YESNO | MB_ICONQUESTION) == IDYES) {
-                    GetProcess()->QuitHostApp();
-                }
                 break;
             default:
                 break;

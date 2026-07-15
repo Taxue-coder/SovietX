@@ -82,30 +82,6 @@ static std::string ReadFixedFileVersion(const std::wstring& path, bool productVe
 
 class WindowsProcess : public PlatformProcess {
 public:
-    void RestartHostApp() override {
-        QuitHostApp();
-        Sleep(1000);
-
-        std::wstring path = Utf8ToWide(GetHostAppPath());
-        if (!path.empty()) {
-            ShellExecuteW(NULL, L"open", path.c_str(), NULL, NULL, SW_SHOWNORMAL);
-        }
-        Log("Host app restarted");
-    }
-
-    void QuitHostApp() override {
-        DWORD currentPid = GetCurrentProcessId();
-        EnumWindows([](HWND hwnd, LPARAM lParam) -> BOOL {
-            DWORD ownerPid = 0;
-            GetWindowThreadProcessId(hwnd, &ownerPid);
-            if (ownerPid == static_cast<DWORD>(lParam) && IsWindowVisible(hwnd)) {
-                PostMessageW(hwnd, WM_CLOSE, 0, 0);
-            }
-            return TRUE;
-        }, static_cast<LPARAM>(currentPid));
-        Log("WM_CLOSE sent to host process windows");
-    }
-
     bool LaunchNewInstance() override {
         std::wstring path = Utf8ToWide(GetHostAppPath());
         if (path.empty()) return false;

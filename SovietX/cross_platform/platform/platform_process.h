@@ -2,9 +2,7 @@
  * @file platform_process.h
  * @brief SovietX 平台进程管理抽象接口
  * 
- * 封装进程启动、终止、互斥体等进程级操作。
- * - macOS: NSTask / killall / open -n
- * - Windows: CreateProcess / TerminateProcess / CreateMutex
+ * Encapsulates Windows process and browser operations.
  */
 
 #ifndef SOVIET_PLATFORM_PROCESS_H
@@ -23,17 +21,6 @@ public:
     virtual ~PlatformProcess() = default;
 
     /**
-     * 重启宿主应用（微信）。
-     * 先退出再重新启动。
-     */
-    virtual void RestartHostApp() = 0;
-
-    /**
-     * 退出宿主应用。
-     */
-    virtual void QuitHostApp() = 0;
-
-    /**
      * 启动新的宿主应用实例（多开）。
      */
     virtual bool LaunchNewInstance() = 0;
@@ -47,8 +34,6 @@ public:
 
     /**
      * 获取宿主应用路径。
-     * - macOS: /Applications/WeChat.app
-     * - Windows: D:\Program Files\Tencent\Weixin\Weixin.exe
      */
     virtual std::string GetHostAppPath() = 0;
 
