@@ -63,7 +63,7 @@ public:
                                             const std::string& cancelText) = 0;
 
     /**
-     * 显示设置窗口（迷离模式等参数配置）。
+     * 显示当前功能设置状态。
      */
     virtual void ShowSettingsWindow() = 0;
 

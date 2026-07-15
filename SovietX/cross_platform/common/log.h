@@ -40,7 +40,7 @@ void LogV(const char* format, va_list args);
 
 /**
  * 写入一条带模块标签的日志。
- * @param module 模块名，如 "AntiRevoke" 或 "Theme"
+ * @param module 模块名，如 "AntiRevoke"
  */
 void LogModule(const char* module, const char* format, ...);
 

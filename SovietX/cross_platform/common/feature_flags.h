@@ -39,15 +39,6 @@ constexpr const char* kFeatureRevokeForwardToSelf = "feature.revoke_forward_to_s
 // 使用系统浏览器打开链接
 constexpr const char* kFeatureUseSystemBrowser = "feature.use_system_browser";
 
-// 迷离模式（主题模糊）
-constexpr const char* kFeatureMistyMode = "feature.misty_mode";
-
-// 迷离模式 - 窗口模糊开关
-constexpr const char* kFeatureMistyWindowBlur = "feature.misty_window_blur";
-
-// 迷离模式 - 流光氛围开关
-constexpr const char* kFeatureMistyColorful = "feature.misty_colorful";
-
 // ============================================================
 // 功能开关默认值
 // ============================================================
@@ -60,33 +51,6 @@ struct FeatureDefaults {
     static constexpr bool kGroupExitNicknameDefault = false;
     static constexpr bool kRevokeForwardToSelfDefault = false;
     static constexpr bool kUseSystemBrowserDefault = false;
-    static constexpr bool kMistyModeDefault = false;
-    static constexpr bool kMistyWindowBlurDefault = true;
-    static constexpr bool kMistyColorfulDefault = true;
-};
-
-// ============================================================
-// 迷离模式参数键名和默认值
-// ============================================================
-
-constexpr const char* kMistyQNSAlpha = "misty.qns_alpha";
-constexpr const char* kMistyWindowBlurRadius = "misty.window_blur_radius";
-constexpr const char* kMistyColorfulOpacity = "misty.colorful_opacity";
-constexpr const char* kMistyColorfulBlurRadius = "misty.colorful_blur_radius";
-constexpr const char* kMistyColorfulAnimationDuration = "misty.colorful_animation_duration";
-constexpr const char* kMistyColorPrimary = "misty.color.primary";
-constexpr const char* kMistyColorSecondary = "misty.color.secondary";
-constexpr const char* kMistyColorAccent = "misty.color.accent";
-
-struct MistyDefaults {
-    static constexpr double kQNSAlphaDefault = 0.90;
-    static constexpr int kWindowBlurRadiusDefault = 10;
-    static constexpr double kColorfulOpacityDefault = 0.18;
-    static constexpr double kColorfulBlurRadiusDefault = 70.0;
-    static constexpr double kColorfulAnimationDurationDefault = 10.0;
-    static constexpr int kColorPrimaryDefault = 0x00FFBE23;
-    static constexpr int kColorSecondaryDefault = 0x00FF46BE;
-    static constexpr int kColorAccentDefault = 0x003791FF;
 };
 
 } // namespace soviet

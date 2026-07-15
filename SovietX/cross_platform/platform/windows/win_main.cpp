@@ -26,9 +26,6 @@
 namespace soviet {
 
 extern void InitWindowsAntiRevoke();
-extern void InitWindowsTheme();
-extern void ApplyMistyThemeToAllWindows();
-extern void ShutdownWindowsTheme();
 
 extern PlatformHook* CreateWindowsHook();
 extern PlatformMemory* CreateWindowsMemory();
@@ -58,8 +55,6 @@ std::string GetLogPath() {
 }
 
 void ReleasePlatformServices() {
-    ShutdownWindowsTheme();
-
     PlatformUI* ui = GetUI();
     if (ui) {
         delete ui;
@@ -138,8 +133,6 @@ DWORD StartPlugin() {
 
     ui->InitPluginMenu();
     InitWindowsAntiRevoke();
-    InitWindowsTheme();
-    ApplyMistyThemeToAllWindows();
 
     Log("=== SovietX initialized ===");
     return ERROR_SUCCESS;
