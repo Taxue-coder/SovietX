@@ -10,7 +10,7 @@
 
 <p align="center">
   <img src="https://img.shields.io/badge/platform-Windows%2010%2F11-0078D4.svg" alt="Windows 10/11" />
-  <img src="https://img.shields.io/badge/WeChat%20Windows-4.1.11.54%20x64-07C160.svg" alt="WeChat 4.1.11.54 x64" />
+  <img src="https://img.shields.io/badge/WeChat%20Windows-4.1.12.21%20x64-07C160.svg" alt="WeChat 4.1.12.21 x64" />
   <a href="LICENSE"><img src="https://img.shields.io/badge/license-MIT-green.svg" alt="MIT License" /></a>
 </p>
 
@@ -29,11 +29,11 @@
 
 | 平台 | 微信版本 | 架构 | 状态 | 对应预编译目录 |
 | --- | --- | --- | --- | --- |
-| Windows 10/11 | `4.1.11.54` | x64 | 已配置并提供安装脚本 | `SovietX/cross_platform/dist-windows-41154-antirevoke` |
+| Windows 10/11 | `4.1.12.21` | x64 | 已配置并提供安装脚本 | `SovietX/cross_platform/dist-windows-411221-antirevoke` |
 
-仅支持上表中的 Windows 桌面版微信。安装脚本会拒绝不匹配的版本；其他目录、其他微信版本（包括 `4.1.11.24`）均不作为可用版本发布。
+仅支持上表中的 Windows 桌面版微信。安装脚本会拒绝不匹配的版本；其他目录、其他微信版本均不作为可用版本发布。
 
-请在微信安装目录中右键 `Weixin.exe`，选择“属性” -> “详细信息”，确认文件版本为 `4.1.11.54`。也可以在 PowerShell 中执行：
+请在微信安装目录中右键 `Weixin.exe`，选择“属性” -> “详细信息”，确认文件版本为 `4.1.12.21`。也可以在 PowerShell 中执行：
 
 ```powershell
 (Get-Item "C:\Program Files\Tencent\Weixin\Weixin.exe").VersionInfo.FileVersion
@@ -45,9 +45,9 @@
 
 ### 准备工作
 
-1. 使用 Windows 10 或 Windows 11 64 位系统，并安装 **Windows 桌面版**微信 `4.1.11.54 x64`。
+1. 使用 Windows 10 或 Windows 11 64 位系统，并安装 **Windows 桌面版**微信 `4.1.12.21 x64`。
 2. 退出所有微信窗口后，先手动启动一次微信并完成登录，再退出微信。
-3. 从本仓库获取代码或下载发布包，进入 `SovietX/cross_platform/dist-windows-41154-antirevoke/bin`。请保持该目录中的 `SovietX.dll`、`SovietInjector.exe`、`install_windows.ps1` 和 `auto_inject.vbs` 位于同一目录。
+3. 从本仓库获取代码或下载发布包，进入 `SovietX/cross_platform/dist-windows-411221-antirevoke/bin`。请保持该目录中的 `SovietX.dll`、`SovietInjector.exe`、`install_windows.ps1` 和 `auto_inject.vbs` 位于同一目录。
 
 ### 注入插件
 
@@ -116,7 +116,7 @@ cmake --install build-windows --config Release --prefix dist-windows-local
 
 ### 提示“不支持的微信版本”
 
-确认使用的是 Windows 桌面版 x64 `4.1.11.54`，并检查微信没有在后台自动更新。不同渠道、预览版或相同显示版本但二进制指纹不同的客户端都可能被拒绝。
+确认使用的是 Windows 桌面版 x64 `4.1.12.21`，并检查微信没有在后台自动更新。不同渠道、预览版或相同显示版本但二进制指纹不同的客户端都可能被拒绝。
 
 ### 注入失败或找不到微信
 

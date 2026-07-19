@@ -47,6 +47,7 @@ struct WeChatProfile {
 
     RevokeHookMode hookMode;
     uintptr_t hookPointerVA;                    // 撤回处理函数入口/指针
+    uintptr_t revokeTypeCheckReturnVA;          // revokemsg 分发调用后的返回地址
     uintptr_t rawMessageTemplateVA;             // 撤回 MessageWrap 模板
     uintptr_t messageWrapFromRawVA;             // MessageWrap 构造函数
     uintptr_t messageWrapDestructVA;            // MessageWrap 析构函数

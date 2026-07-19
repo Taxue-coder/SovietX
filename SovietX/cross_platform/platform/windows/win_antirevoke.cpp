@@ -53,12 +53,10 @@ namespace soviet {
  * 4. 在撤回函数中分析 MessageWrap 的字段偏移
  * 5. 搜索 CreateMutexW 的调用者 → 找到多开检查逻辑
  */
-static const uint8_t kWindows41154RevokeTypeCheckEntry[] = {
+static const uint8_t kWindowsRevokeTypeCheckEntry[] = {
     0x48, 0x83, 0x79, 0x10, 0x09, 0x75, 0x26, 0x48,
     0x83, 0x79, 0x18, 0x10, 0x72, 0x03, 0x48, 0x8B,
 };
-constexpr uintptr_t kWindows41154RevokeTypeCheckReturnVA = 0x1822EA0D4;
-
 static const WeChatProfile g_windowsProfiles[] = {
     {
         .displayName = "Windows WeChat 4.1.11.54 x64",
@@ -70,11 +68,12 @@ static const WeChatProfile g_windowsProfiles[] = {
         .moduleName = "Weixin.dll",
         .moduleTimeDateStamp = 0x6A4F29C8,
         .moduleImageSize = 0x0B4D0000,
-        .hookExpectedBytes = kWindows41154RevokeTypeCheckEntry,
-        .hookExpectedBytesSize = sizeof(kWindows41154RevokeTypeCheckEntry),
+        .hookExpectedBytes = kWindowsRevokeTypeCheckEntry,
+        .hookExpectedBytesSize = sizeof(kWindowsRevokeTypeCheckEntry),
 
         .hookMode = RevokeHookMode::kInline,
         .hookPointerVA = 0x180A22D30,
+        .revokeTypeCheckReturnVA = 0x1822EA0D4,
         .rawMessageTemplateVA = 0,   // TODO
         .messageWrapFromRawVA = 0,   // TODO
         .messageWrapDestructVA = 0,  // TODO
@@ -110,6 +109,59 @@ static const WeChatProfile g_windowsProfiles[] = {
             .contentOffset = 0,      // TODO
             .messageTypeOffset = 0,  // TODO
             .msgSourceOffset = 0,    // TODO
+        },
+    },
+    {
+        .displayName = "Windows WeChat 4.1.12.21 x64",
+        .platform = "windows",
+        .bundleID = "WeChat",
+        .shortVersion = "4.1.12.21",
+        .buildVersion = "*",
+
+        .moduleName = "Weixin.dll",
+        .moduleTimeDateStamp = 0x6A59DC20,
+        .moduleImageSize = 0x0B6CB000,
+        .hookExpectedBytes = kWindowsRevokeTypeCheckEntry,
+        .hookExpectedBytesSize = sizeof(kWindowsRevokeTypeCheckEntry),
+
+        .hookMode = RevokeHookMode::kInline,
+        .hookPointerVA = 0x180A39100,
+        .revokeTypeCheckReturnVA = 0x18232C414,
+        .rawMessageTemplateVA = 0,
+        .messageWrapFromRawVA = 0,
+        .messageWrapDestructVA = 0,
+        .insertPaySysMsgToSessionVA = 0,
+        .revokeDeleteMessagesVA = 0,
+
+        .revokeOriginCallsiteAfterQueryVA = 0,
+        .revokeOriginCallsiteContinueVA = 0,
+        .revokeOriginCallsiteZeroBranchVA = 0,
+        .revokeOriginCallsiteCheckVA = 0,
+        .revokeOriginCallsiteMode = RevokeCallsiteMode::kLegacy410,
+        .revokeOriginOutWrapStackOffset = 0,
+        .revokeOriginExtObjectStackOffset = 0,
+
+        .multiOpenPreventInstanceVA = 0,
+        .getMainProcessCountVA = 0,
+
+        .groupExitDBApplyVA = 0,
+        .groupExitFMessagePreVA = 0,
+        .groupExitUpdateSessionCacheVA = 0,
+        .groupExitMemberDataListVA = 0,
+        .groupExitChatroomInfoOperatorVA = 0,
+
+        .openURLWebViewKindVA = 0,
+        .sendMsgCGIVA = 0,
+
+        .layout = {
+            .messageWrapSize = 0,
+            .remoteUserOrSessionOffset = 0,
+            .selfUserOffset = 0,
+            .createTimeMsOffset = 0,
+            .createTimeSecOffset = 0,
+            .contentOffset = 0,
+            .messageTypeOffset = 0,
+            .msgSourceOffset = 0,
         },
     },
 };
@@ -153,9 +205,11 @@ static bool ValidateActiveProfile() {
     if (!ValidateActiveModule()) return false;
 
     if (g_activeProfile->hookPointerVA == 0 ||
+        g_activeProfile->revokeTypeCheckReturnVA == 0 ||
         !g_activeProfile->hookExpectedBytes ||
         g_activeProfile->hookExpectedBytesSize == 0) {
-        Log("[Profile] 4.1.11.54 anti-revoke entry is not verified; feature stays disabled");
+        Log("[Profile] %s anti-revoke entry is not verified; feature stays disabled",
+            g_activeProfile->shortVersion);
         return false;
     }
 
@@ -257,7 +311,7 @@ static int64_t HookedRevokeHandler(int64_t a1, int64_t a2) {
 /**
  * 安装防撤回 Patch。
  */
-// 4.1.11.54 uses MSVC x64 std::string values for parsed sysmsg fields.
+// Supported Windows 4.1.x profiles use MSVC x64 std::string sysmsg fields.
 constexpr size_t kMsvcStringInlineCapacity = 15;
 constexpr size_t kMaxSysMsgTypeLength = 64;
 
@@ -299,7 +353,7 @@ static bool ReadMsvcString(uintptr_t address, std::string* outType) {
 }
 
 // The helper is shared by several sysmsg types. Restrict the detour to the
-// callsite that checks `revokemsg` in the 4.1.11.54 dispatcher.
+// callsite that checks `revokemsg` in the matched profile's dispatcher.
 using RevokeTypeCheckFn = int (*)(void*);
 static RevokeTypeCheckFn g_origRevokeTypeCheck = nullptr;
 static std::atomic<uint64_t> g_blockedRevokeCount{0};
@@ -307,7 +361,9 @@ static std::atomic<uint64_t> g_blockedRevokeCount{0};
 static int HookedRevokeTypeCheck(void* typeString) {
     PlatformMemory* memory = GetMemory();
     const uintptr_t expectedReturn = memory
-        ? memory->ToRuntimeAddress(kWindows41154RevokeTypeCheckReturnVA)
+        ? memory->ToRuntimeAddress(g_activeProfile
+            ? g_activeProfile->revokeTypeCheckReturnVA
+            : 0)
         : 0;
 
     std::string type;
